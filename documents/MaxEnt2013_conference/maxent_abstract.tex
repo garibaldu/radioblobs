@@ -1,0 +1,137 @@
+%%%%%  LaTeX template for submission of abstracts to  MaxEnt 2013         
+%%%%%                                                         
+%%%%% Use this template to generate a pdf version of your abstract for submission. This is 
+%%%%% most easily accomplished using a LaTeX compiler that outputs directly to pdf.
+%%%%%                                      
+%%%%% Your abstract may be no more that one page in length and that all text and figures must                                                      
+%%%%% fit in a 16.0 cm x 23.0 cm frame. 
+%%%%%                                          
+%%%%% When you submit the pdf version of your abstract on the conference web site
+%%%%% you will be ask if your are requesting an Oral presentation or a Poster.  You will                             
+%%%%% also be ask it this is a student presentation.                                          
+%%%%%                                                                
+                                                      
+%%%%% Do not change the text size in the line below.
+\documentclass[letterpaper,12pt]{article}
+%\documentclass[final,onecolumn]{aipproc}
+%\layoutstyle{6x9}
+
+%%%%%  If you chose not to include the optional figure then you can delete the line below.
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+
+%\usepackage{empheq}   %boxes around equations
+%\usepackage{multicol}        % used for the two-column index
+%\usepackage[bottom]{footmisc}	% places footnotes at page bottom
+%\usepackage{epstopdf} 	%essential with TeXShop on Mac
+%\usepackage{longtable} 	%long tables
+%\usepackage{esint}  	%multiple integral fonts
+%\usepackage{stmaryrd} 	%floor, ceiling symbol font
+
+%\hyphenation{MaxEnt}
+
+%%%%% Page size and layout commands. Do not change lines below below.
+\textwidth16cm
+\textheight23cm
+\topmargin-2.0cm
+\oddsidemargin0cm
+\parindent0pt
+%\pagestyle{empty}
+%%%%% End of Page size and layout commands.
+
+
+\begin{document}
+
+
+%%%%%  The title of your contribution in all capital letters.
+%\title{A Dirichlet-multinomial objective function for source detection in astronomical images.}
+\title{Source detection in astronomical images by Bayesian model comparison}
+
+%%%%%  Author's name (underline presenter's author)            
+\author{\underline{M. Frean}, A. Friedlander, M. Johnston-Hollitt, C. Hollitt\\
+        Victoria University of Wellington, New Zealand\\
+        (marcus.frean@ecs.vuw.ac.nz, melanie.johnston-hollitt@vuw.ac.nz)
+       }
+
+\date{13 September 2013}
+\maketitle
+
+%%%%%               Abstract begins here                      
+\begin{abstract}
+  The next generation of radio telescopes will generate exabytes of
+  data on hundreds of millions of objects, making automated methods
+  for the detection of astronomical objects (``sources") essential. Of
+  particular importance are faint diffuse objects embedded in noise,
+  which are not well found by current automated methods. There is a
+  pressing need for source finding software that identifies these
+  sources, involves little manual tuning, yet is tractable to
+  calculate.  This paper describes how to build Dirichlet and
+  multinomial models for pixel intensity distributions in radio
+  astronomy images, and to use these to find sources.
+
+%  Our starting point is fundamentally different from the standard  approach: 
+Instead of targeting sources {\it per se}, we build a model for
+``background''.  We first propose a novel image discretisation method
+that incorporates uncertainty about {\it how} an image should be
+discretised.  We then suggest a new objective function, based on
+marginalising over the Dirichlet-multinomial distribution, which
+indicates how well a given region conforms to a well-specified model
+of background compared to a loosely-specified model of foreground.
+This enables Bayesian model comparison to find regions that differ
+from the background distribution, taking proper account of the
+resulting ``Occam factor''.  Unlike conventional approaches, this
+objective function is able to detect features even if they have the
+same mean pixel intensity as the background. The function and its
+gradient are analytic, enabling efficient location of the regions that are
+unlikely to be background.  Our procedure removes sources from the
+data as it goes, iteratively improving the model of background.
+
+  Performance was measured via the precision and recall of the
+  objective function on identifying sources in real and simulated
+  data.  Our approach performs well on these measures: the
+  Dirichlet-multinomial objective function is maximized at most real
+  objects, while returning only a moderate number of false positives.
+  Performance was also compared against a catalogue constructed using
+  a widely-used thresholding and flood-filling source detection
+  software package, including manual post-processing by an astronomer.
+  Encouragingly, our method found a number of dim sources that were
+  missing from the ``ground truth'' catalogue but were subsequently
+  identified as true sources. This is a key success of the objective
+  function: dim objects are scientifically interesting and not
+  reliably found by current methods.
+  % unless they also generate false  positives.
+
+%The nature of pixel-intensity based thresholding algorithms restricts their ability to find such dim sources without also finding such a large number of noise regions that the results are unusable. The Dirichlet-multinomial objective function does not restrict the objects found in this way, and produces raw results containing most real objects, including dim sources not well found by other other algorithms, while returning only a moderate number of false positives in regions of noise.
+
+
+%%%%%       OPTIONAL: Figure (delete if not used)                                                 
+%%%%%       Do not add a figure caption.
+%%%%%       The conference program will not be printed in colour so colour figures should not be used.
+%%%%%       The example figure is in pdf format.     
+
+%%\begin{figure}[h]
+%%\begin{center}
+%%\includegraphics[width=70mm]{roo}
+%%\end{center}
+%\caption{blah blah.}
+%\label{fig:roo}
+%%\end{figure}
+%%%%%        End of Figure
+
+
+%%%%%       OPTIONAL: References (delete  if not used)   
+%%%%%       Separate each reference with a blank line.                                                                
+%%\medskip\noindent{References: }
+%%[1] C. A. Hales et al. MNRAS {\bf 425}, 2 (2012).
+%%%%%        END of References
+
+
+%%%%%       OPTIONAL: Key Words (delete if not used)   
+%%%%%        END of Key Words
+
+\end{abstract}
+\thispagestyle{empty}
+\end{document}
+
+\endinput

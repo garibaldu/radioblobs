@@ -1,0 +1,45 @@
+# Specific monsters - too big for git anyway #
+###################
+./code_2d/cdfs2/CDFS_map.fits.gz
+./code_2d/cdfs2/CDFS_map.fits
+./code_2d/elais/ELAIS_map.fits.gz
+./code_2d/elais/ELAIS_map.fits
+
+# Image and PDF stuff - will need to add such things deliberately #
+###################
+*~
+*.aux
+*.dvi
+*.log
+*.pdf
+*.pyc
+*.png
+
+# Packages #
+############
+# it's better to unpack these files and commit the raw source
+# git has its own built in compression methods
+*.7z
+*.dmg
+*.gz
+*.iso
+*.jar
+*.rar
+*.tar
+*.zip
+
+# Logs and databases #
+######################
+*.log
+*.sql
+*.sqlite
+
+# OS generated files #
+######################
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db

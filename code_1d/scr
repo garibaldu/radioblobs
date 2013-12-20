@@ -1,0 +1,3 @@
+python DMRatio.py -n 10 -s eqocc -r 987 -o -t
+python DMRatio.py -n 10 -s width -r 987 -o -t
+
