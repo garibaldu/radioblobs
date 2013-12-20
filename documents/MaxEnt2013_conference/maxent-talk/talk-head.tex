@@ -1,0 +1,85 @@
+% To make handouts: (eg)
+% pdfnup --nup 2x2 --orient landscape --frame true --delta "1cm 1cm" --scale 0.9 lecture.pdf 
+% except pdfnup isn't yet on the system at ECS... (I've asked for it).
+
+%% BEAMER TUTORIAL:   http://www.math.umbc.edu/~rouben/beamer/quickstart.html
+
+
+% remove/add "handout" to the following, to disable/enable presentation overlays
+\documentclass[slidestop,compress,mathserif]{beamer}
+
+\usepackage{multimedia}
+\usepackage{amsfonts}
+\usepackage[scaled]{helvet}
+\setcounter{tocdepth}{2} % determines the depth to which tableofcontents goes
+
+%% For lots of theme examples, see  http://www.hartwork.org/beamer-theme-matrix/
+%\usetheme[height=8mm]{Boadilla}
+\usetheme{Frankfurt}
+\setbeamertemplate{items}[rectangle] 
+\setbeamertemplate{blocks}[rounded][upper=black,lower=white,shadow=false]
+%\usecolortheme{default} % default albatross crane beetle dove fly seagull wolverine beaver
+\usecolortheme{lily} % for blocks: lily, orchid, rose... beaver
+%\setbeamertemplate{navigation symbols}{} % gets rid of those silly navigations!
+
+%\beamersetaveragebackground{black}
+\setbeamercolor{alerted text}{fg=red}
+
+
+
+
+
+
+% couple of handy things for my maths
+\newcommand{\independent}{\protect\mathpalette{\protect\independenT}{\perp}}
+\def\independenT#1#2{\mathrel{\rlap{$#1#2$}\mkern2mu{#1#2}}}
+\newcommand{\dependent}{\not\independent}
+\newcommand{\data}{\mathcal{D}}
+\newcommand{\mat}[1]{\ensuremath{\mathbf{#1}}} % vectors/matrices, x,A,B etc.
+\newcommand{\gmat}[1]{\mbox{\boldmath${#1}$}}  % vectors/matrices Greek symbols
+\newcommand{\swrt}[2]{\frac{\partial #1}{\partial #2}} % partial derivative of single symbol
+\newcommand{\bwrt}[1]{\frac{\partial}{\partial #1}} % partial derivative of something big
+\newcommand{\bx}{\mat{x}}
+\newcommand{\bh}{\mat{h}}
+\newcommand{\bw}{\mat{w}}
+\newcommand{\bv}{\mat{v}}
+\newcommand{\by}{\mat{y}}
+\newcommand{\bs}{\mat{s}}
+\newcommand{\bt}{\mat{t}}
+\newcommand{\bm}{\mat{m}}
+\newcommand{\bX}{\mat{X}}
+\newcommand{\bT}{\mat{T}}
+\newcommand{\bW}{\mat{W}}
+\newcommand{\bY}{\mat{Y}}
+
+\newcommand{\real}{\mathbb{R}}
+\newcommand{\reals}{\mathbb{R}}
+\newcommand{\Expectation}{\mathbb{E}}
+\newcommand{\expectation}{\mathbb{E}}
+\newcommand{\obs}{\mathrm{obs}}
+\newcommand{\half}{\mbox{\small $\frac{1}{2}$}}
+\newcommand{\tinyhalf}{\mbox{\tiny $\frac{1}{2}$}}
+
+%\renewenvironment{itemize}{\begin{dinglist}{96}}{\end{dinglist}}
+\definecolor{MyBlue}{rgb}{0,0.2,0.85}
+\definecolor{blue}{rgb}{0,0.08,0.45}
+\definecolor{green}{rgb}{0,0.4,0.06}
+\definecolor{lightgreen}{rgb}{0,0.8,0.12}
+\definecolor{red}{rgb}{0.65,0.02,0.0}
+\definecolor{lightblue}{rgb}{0.8,0.88,1}
+\definecolor{example}{rgb}{1,1,0.7}
+\definecolor{gray}{rgb}{.5,.5,.5}
+\setbeamercolor{uppercol}{fg=white,bg=blue}
+\setbeamercolor{lowercol}{fg=black,bg=lightblue}
+\setbeamercolor{example}{fg=black,bg=example}
+\renewcommand{\emph}{\color{MyBlue}}
+\newcommand{\gray}{\color{gray}}
+\newcommand{\blue}{\color{MyBlue}}
+\newcommand{\red}{\color{red}}
+\newcommand{\green}{\color{green}}
+\newcommand{\lightgreen}{\color{lightgreen}}
+\newcommand{\Line}[0]{\rule{0cm}{0cm}\\\hrule\rule{0cm}{0cm}}
+
+\setlength{\parskip}{2mm plus 1mm minus 1mm}
+
+
