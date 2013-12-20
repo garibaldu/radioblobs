@@ -1,0 +1,204 @@
+\chapter{Discretising images}\label{C:BIN}
+
+Astronomical images have continuous-valued pixel intensities. These continuous values can be converted to discrete values --- ``discretised" --- by histogram binning. 
+
+Histogram binning is a method of mapping a large number of continuous values (in this case, pixel intensities) to a smaller set of discrete values (or ``bins"), where all values within a range are assigned a discrete label representing that range \cite{yang2010discretization}.
+
+Discretisation of continuous pixel intensity values makes it possible to model the data according to a multinomial distribution, and to use the Dirichlet distribution, which is the conjugate prior for the multinomial distribution \cite{diaconis1979conjugate,frigyik2010introduction,johnson1997discrete,kotz2004continuous}. This allows the use of the topic modelling technique latent Dirichlet allocation \cite{blei2003latent} (LDA; Chapter \ref{C:LDA}) and the derivation of a Dirichlet-multinomial Score (DM-Score; Chapters \ref{C:1D} and \ref{C:2D}). LDA and the DM-Score are combined in Chapter \ref{C:2D-LDA}\footnote{Note that a compound Dirichlet-multinomial distribution is used in both LDA and the DM-Score. In both cases the multinomial parameter is integrated out, leaving only the data and the Dirichlet hyperparameter. LDA estimates a conditional distribution while the DM-Score calculates a marginal joint distribution \cite{blei2003latent, ng2011dirichlet}.}. 
+
+Discretisation is a simplification and reduction in the complexity of the information in the data. It is therefore important that the process of discretisation does not destroy information essential to the task at hand. In the case of source finding in radio astronomy images, it is important that information that can be used to discriminate source pixels from background pixels is not lost. Though discriminative ability may be decreased by discretisation, an ideal discretisation retains or improves discriminative accuracy \cite{kotsiantis2006discretization,liu2002discretization}.
+
+In this chapter, simple data partitioning methods for defining histogram bins for discretisation are described in Section \ref{sec:binning-strategies}. A novel way of ``softening" bin borders to incorporate uncertainty about the location of partition-points in the data is described in Section \ref{sec:dirichlet-borders}. An exploratory approach to source finding in discretised images is described in Section \ref{sec:multi}.
+
+\section{Histogram binning strategies}\label{sec:binning-strategies}
+Histogram binning is the simplest of a range of discretisation methods \cite{kotsiantis2006discretization,liu2002discretization,yang2010discretization}.
+
+The majority of existing discretisation methods are supervised (using a training set of instances with known class labels) \cite{kotsiantis2006discretization,liu2002discretization,yang2010discretization}; these methods are not appropriate for radio astronomy images as the class (source or background) of an image's pixels is not known \textit{a priori}. 
+
+Of the few unsupervised algorithms, cluster-based \cite{chmielewski1996global} and dynamic-qualitative \cite{lopez2000dynamic} --- both of which seek to reduce within-interval variation and maximise between-interval variation --- would be appropriate, but, given the time-consuming nature of these algorithms (particularly relative to histogram binning), neither is practical \cite{yang2010discretization}.
+
+A histogram of pixel intensities can be constructed by assigning each pixel in an image to an interval or ``bin" on the basis of its intensity, where bins are ranges of intensity values defined\footnote{Note that some authors use the definition $(min_k, max_k]$, i.e., $x \in k$ if $min_k < x \le max_k$ \cite{kotsiantis2006discretization}.} as $[min_k, max_k)$. A pixel $x$ falls into bin $k$ if $min_k \le x < max_k$ (except in the case of the last/top bin $K$, which is defined as $[min_K, max_K]$: a pixel $x$ is assigned bin $K$ if $min_K \le x \le max_K$). For adjacent ranges $[min_i, max_i)$ and $[min_j, max_j)$, $max_i \le min_j$ and so each data instance falls into exactly one bin; coverage is ensured by setting $min_j = max_i$.
+
+In order to discretise intensity values by histogram binning, bin borders (values that define $min_k$ and $max_k$ for each bin $k \in K$) must be defined. The number of bins must also be set (either manually, or by the binning method itself). 
+
+A simple way to create bins in data is to partition the data on the basis of either interval-width or bin-occupancy. These methods are described below.
+
+\subsection{Width-based partitions}\label{sec:width}
+Width-based methods divide the number-line between $x_{min}$ and $x_{max}$  where $x_{min}$ is the minimum pixel intensity value in the data, and $x_{max}$ is the maximum value \cite{yang2010discretization}.
+
+\subsubsection{Equal width partitions}\label{sec:wid}
+One of the simplest ways to partition data into $K$ bins is to create $K$ equal width partitions in the data range $[x_{min},x_{max}]$. The width of intervals is defined as $w = (x_{max} - x_{min})/K$, and the bin are defined at $[x_{min}, x_{min}+w), [x_{min}+w, x_{min}+2w), .. ,[x_{min}+(K-1)w,x_{max}]$. This is an equal partitioning of the number-line between $x_{min}$ and $x_{max}$ \cite{yang2010discretization}.
+
+Equal width discretisation of non-uniformly distributed data may result in an inaccurate representation of the data; for example, outliers may skew the histogram binning \cite{dougherty1995supervised,kotsiantis2006discretization,liu2002discretization}. 
+
+In the case of radio astronomy data, the vast majority of an image's pixels are typically within a small range at the bottom of end of the data range, with a few, relatively small, peaks at the top of the range (see Figure \ref{fig:histo}). This means that an equal width binning scheme will produce many empty bins (which means wasted representation power) and, more importantly, a lack of resolution at the low end of the intensity range. Because many scientifically interesting objects have pixel intensities close to background intensities, equal width binning strategies risk losing information that differentiates background from source pixels. In the case of radio astronomy data, some of these effects may be alleviated with an iterative binning process that removes bright source pixels (outliers) from the histogram binning process once the sources containing these pixels have been identified (for an example, see Chapter \ref{C:2D}).
+
+\begin{figure}
+\centering
+\includegraphics[width=1.0\textwidth]{IMAGES/histo.png}
+\caption[A histogram of pixel intensities in an astronomical image]{\textbf{A histogram of pixel intensities in an astronomical image.} Pixel intensities from the Australia Telescope Large Area Survey Chandra Deep Field-South (ATLAS CDFS) \cite{norris2006deep}, with the \textbf{log} count in each of $1000$ equal width bins. Note the large peak in the low intensities and the outliers in the high intensities.}
+\label{fig:histo}
+\end{figure}
+
+\subsubsection{Exponentially increasing width partitions}
+This problem of including source pixels and background pixels in the same bin(s) may be addressed by exponentially increasing the interval-widths in a partition. 
+
+In this method, intervals are defined recursively with interval $k$ having width $0 < \gamma < 1$ times less wide than interval $k+1$. The last (top) interval $\text{wid}_k$ is defined as $\gamma(x_{max}-x_{min})$, with bin $K-1$ having width $\gamma \text{wid}_k$. For this partitioning method, the number of bins $K$ will be defined by the parameter $\gamma$ and the range of the data.
+
+Depending on the $\gamma$ value used, there may still not be sufficient resolution in the low values to differentiate source from background in radio astronomy images.
+
+\subsection{Frequency-based partitions}\label{sec:occ}
+Alternatively, bins may be defined according to their occupancy. In contrast to width-based methods that partition the number line, frequency-based partitions rank the data and make partitions on this ranking \cite{yang2010discretization}.
+
+\subsubsection{Equal occupancy partitions}
+Equal occupancy partitions are constructed by dividing the count of pixels $N$ by $K$ bins, to determine the number of pixels $n$ that should fall into each bin $k$. Pixels are allocated to bins by ranking pixels by intensity and partitioning this ranking into $K$ partitions of (approximately, depending on whether $N$ is divisible by $K$) $n$ data points each. The minimum and maximum values in the partition defining the bin boundaries $[min_k, max_k)$ are those of the first and last ranked data points within the partition.
+
+In contrast to width-based partitions, there are no empty bins in equal occupancy partitions (no ``wasted" bins). With respect to astronomical data, low intensity source pixels are less likely to be subsumed into a bin with mostly background pixels (though this is not guaranteed). However, information with respect to the number line, such as bright ``peaks" in the data, is lost, as the resulting distribution of data into bins is not representative of the distribution of the original, non-uniform, data \cite{clarke2000entropy}.
+
+\subsubsection{Exponentially decreasing occupancies}
+An exponentially decreasing partitioning of data with respect to occupancy divides the pixel ranking such that each bin $k$ has $0 < \gamma < 1$ times as many pixels as bin $k-1$. 
+
+The first (bottom) bin occupancy $\text{occ}_1$ is created by assigning it the first $\gamma N$-many pixels (where $N$ is the total number of pixels in the data) and defining the minimum and maximum values for bin 1 as the intensities of the first ranked and last ranked pixels within $[min_1, max_1)$ respectively. The rest of the bins are defined recursively (bin $2$ has the next $\gamma \text{occ}_1$-many pixels in the ranking, and so on).
+
+\section{A novel method for softening bin borders}\label{sec:dirichlet-borders}
+
+There are three major problems with the simple discretisation/binning methods described in Section \ref{sec:binning-strategies} for radio astronomy data:
+\begin{enumerate}
+\item there is a lack of any informed basis for deciding on what bin boundaries to use and so any particular choice amounts to an unjustified assertion; 
+\item because radio astronomy data is non-uniform, relevant groupings of values may be split across bins or combined in bins in a way that reduces discriminative power \cite{clarke2000entropy}; and
+\item discretisation results in sudden changes at partition values, which introduces variation into the system that did not previously exist --- moreover, data-points that lie near a boundary of a bin are less well represented by that bin than data-points that lie towards the middle of the bin's interval \cite{yang2002non}.
+\end{enumerate}
+
+For the source-detection algorithms used in this thesis, bin identities are used to convert pixels in an image or a region in that image into counts in bins. Given that there is a lack of any informed basis for the choice of bin boundaries used, and the problems inherent in binning non-uniform data, it would be more principled to assign proportions of each pixel across a range of bins to reflect uncertainty about which bin a pixel belongs to.
+
+Instead of making a ``hard" assignment of pixels to bins where each pixel is allocated to one bin only, it is possible to create several sets of bins $b \in B$, each of size $K$, with bin sets $b_i$ and $b_j$ having differing partition points. Each pixel would then have a number of ``possible" bin assignments across sets of bins (each pixel $x$ will fall into one bin $k$ for each set of bins $b$).
+
+Given a number of plausible sets of bins $B$, it is possible to count how often a given pixel $x$ appears in each bin $k \in B$. Once normalised (by dividing the counts in each bin by the number of $b \in B$, so that the sum of counts for each pixel $x$ across bins is equal to $1$) this gives a {\it distribution} over all the bins for $x$, which reflects uncertainty about where the borders should lie. 
+
+This solves the problem of the sudden changes at bin borders, and is a method for converting continuous values into distributions over discrete values (counts) in a way that is smooth. It reduces the impact both of the uninformed choice of bins and of any within-class splitting over bins and between-class combining in bins \cite{clarke2000entropy}\footnote{Note that there are existing techniques for transforming continuous attributes to distributions over intervals/bins. Ishibuchi \textit{et. al.} \cite{ishibuchi2004fuzzy} use labelled data and fuzzy logic to create linguistic association rules; Yang and Webb \cite{yang2002non} create overlapping, rather than disjoint, intervals constructed such that a given data-point falls near the middle of its interval, away from interval boundaries. In contrast, the approach developed in this chapter directly addresses uncertainty about where those boundaries lie.}.
+
+\subsection{Creating sets of bins with the Dirichlet distribution}
+
+The Dirichlet distribution is a natural way to create such sets of bins. In this section, the Dirichlet distribution is described, followed by an explanation of how it may be used to create sets of bins.
+
+\subsubsection{The Dirichlet distribution}
+
+Informally, a Dirichlet distribution can be thought of as a distribution over categorical or multinomial probability mass functions (pmfs) of size $K$; or, in other words, a distribution over the ($K-1$) dimensional probability simplex \cite{frigyik2010introduction,ng2011dirichlet}.
+
+Firgyik \textit{et. al.} \cite{frigyik2010introduction} illustrate the intuition behind the Dirichlet distribution using dice. A die can be thought of as a pmf with $K=6$. A given die may be fair (with equal probability of rolling each number) or it may have imperfections that result in a biased or weighted die. A Dirichlet distribution can be thought of as a bag of dice, from which dice may be drawn. The bag may contain dice that are all reasonably fair, biased in some particular manner, or some mixture.
+
+A Dirichlet distribution has a parameter $\boldsymbol{\alpha} = \alpha_1,...,\alpha_K$ and probability density function on the ($K-1$) dimensional simplex:
+\begin{align}
+f(x_1, ..., x_{K-1};\alpha_1,...,a_K)=\frac{\Gamma(\sum_{i=1}^K \alpha_i)}{\prod_{i=1}^K \Gamma(\alpha_i)}\prod_{i=1}^K x_i^{a_i-1} \label{eq:dir-pdf}
+\end{align}
+where $\Gamma(.)$ denotes the gamma function; and with $x_i \in [0,1]$, $\sum_{i=1}^{K-1} x_i < 1$, and $x_K = 1 - x_1 - ... - x_{K-1}$ (this parametrisation of the Dirichlet probability density function is due to the fact that the probability density is positive only on the ($K-1$) dimensional simplex and zero elsewhere; the simplex exists in $K$ dimensional space) \cite{frigyik2010introduction,hoadley1969compound,johnson1997discrete,kotz2004continuous,mosimann1962compound,ng2011dirichlet}.
+
+The $\boldsymbol{\alpha}$ parameter controls where the density on the probability simplex lies. In the special case when $\alpha_i = \alpha_j = 1 \; \forall i,j \in K$, the density is uniformly distributed over the simplex. Every multinomial distribution over $K$ is equally likely to be drawn from the Dirichlet distribution with this $\boldsymbol{\alpha}$ parameter. The Dirichlet with uniform $\boldsymbol{\alpha}$ parameter $\alpha_i = \alpha_j < 1$ pushes the density to the corners of the simplex; multinomial distributions with one $x_k$ much greater than all the others (with $(1 - x_k) << 1$ and $x_i << 1 \; \forall i \ne k$) are drawn from the Dirichlet with this $\boldsymbol{\alpha}$ parameter. When $\alpha_i = \alpha_j > 1$, the density lies towards the middle of the simplex. Distributions drawn from the Dirichlet with $\alpha_i = \alpha_j >> 1$ approximate uniform distributions over $K$. When  $\boldsymbol{\alpha}$ parameters are not uniform, the density on the simplex is not symmetric. For non-uniform  $\boldsymbol{\alpha}$ parameters with values $>1$, if  $\alpha_i > \alpha_j$, distributions are likely to be drawn with $x_i > x_j$ \cite{frigyik2010introduction}. Figure \ref{fig:simplex} illustrates these cases.
+
+\begin{figure}
+\centering
+\includegraphics[width=1.0\textwidth]{IMAGES/simplex.png}
+\caption[Dirichlet samples on the simplex]{\textbf{Dirichlet samples on the simplex.} $\boldsymbol{\alpha}$-vectors: $[1,1,1]$ (top left), $[10,10,10]$ (top right), $[0.1,0.1,0.1]$ (bottom left), $[2,5,20]$ (bottom right).}
+\label{fig:simplex}
+\end{figure}
+
+\subsubsection{Interpreting Dirichlet samples as bin borders}
+
+A single sample from a Dirichlet distribution with an $\boldsymbol{\alpha}$-vector of $K$ components yields a $K$-element vector $\mathbf{x}$ for which $\sum_{k=1}^K x_k = 1$ and all $x_k > 0$ (such as $\mathbf{x}=[0.1,0.7,0.2]$ with $K=3$). The cumulative sum of the elements of $\mathbf{x}$, denote $\mathbf{x}_d$, can be interpreted as partition-points over $[0,1]$ (such as $\mathbf{x}_d = [0.1,0.8,1.0]$). 
+
+To translate $\mathbf{x}'$ into bins, these partitions can either be interpreted over the number-line between minimum and maximum pixel values $[x_{min}, x_{max}]$ or over a ranking of pixels, as described in Sections \ref{sec:wid} and \ref{sec:occ}.
+
+A Dirichlet distribution with symmetric $\boldsymbol{\alpha}$-vector with $\alpha_i = \alpha_j > 1 \; \forall i,j$ will produce roughly even values for all $x_k \in \mathbf{x}$ (and the larger the $\alpha$ values, the more uniform the distributions drawn). Draws from a Dirichlet distribution with such an $\boldsymbol{\alpha}$-vector can be used as partition points in a set of roughly equal width or roughly equal-occupancy bins.
+
+To produce increasing or decreasing bins (width or occupancy), a ``stretch factor" $\beta$ can be applied to the $\alpha$ values, such that $\alpha_j = \beta\alpha_i$, similar to the derivation of exponentially increasing width bin borders (Section \ref{sec:wid}) and exponentially decreasing occupancy bin borders (Section \ref{sec:occ}).
+
+Figure \ref{fig:test_DirBins} shows examples of bin borders produced by Dirichlet distributions with symmetric and asymmetric $\boldsymbol{\alpha}$-vectors.
+
+\begin{figure}
+\begin{center}
+\includegraphics[width=.49\linewidth]{IMAGES/test_DirBins_s1_a100.png}
+\includegraphics[width=.49\linewidth]{IMAGES/test_DirBins_s1p3_a100.png}
+\caption[Dirichlet bin borders]{\textbf{Dirichlet bin borders.} Sets of bin borders created by sampling from a Dirichlet distribution. The borders on the left are generated from a Dirichlet with symmetric $\boldsymbol{\alpha}$-vector with $\alpha_i = 10 \; \forall i$. On the right, $\alpha_{i+1} = \beta \times
+  \alpha_{i} $, with the stretch factor $\beta = 1.3$. Their sum $A
+  =\sum_i\alpha_i$ is set to 100 in both cases. In the top-most plots, each row shows an independent draw from the Dirichlet with this $\boldsymbol{\alpha}$-vector. The bottom plots show the distribution of pixel intensities across bins for a set of Dirichlet bins, using a colour map from black (zero) to red (low) to white (high). For example in the plots at right, a pixel intensity of 0.8 falls into bin 9 in most cases, but sometimes falls into bin 8.}
+\end{center}
+\label{fig:test_DirBins}
+\end{figure}
+
+
+\begin{figure}
+\centering
+\makebox[\textwidth][c]{\includegraphics[width=1.0\textwidth]{IMAGES/pics-555}}
+\caption[Binned views of an image]{\textbf{Different views of an image with different binning strategies.} The image is shown at top, created by generating three sources (at left), and then adding zero-mean Gaussian noise (right). The next four images show the image discretised by four different histogram binning methods: equal width (middle left), Dirichlet equal width (middle right), equal occupancy (bottom left), and Dirichlet equal occupancy (bottom right). $K=10$ bins for all four binning strategies. For the Dirichlet bins, $\alpha_i = \alpha_j = 10 \; \forall i,j \in K$.}
+\label{fig:binned-images}
+\end{figure}
+
+
+\section[Discretised images: exploration]{Source detection in discretised images: exploration}\label{sec:multi}
+Within the framework of discretisation of continuous-valued images by histogram binning, an exploratory approach to classifying sub-windows of images as source or background was implemented.
+
+In this approach, the distribution of pixel intensities in an image or window (sub-image) was modelled as a multinomial distribution \cite{kotz2004continuous,wasserman2004all} across bins.
+
+The task of finding sources in a radio astronomy image was framed as finding and identifying background, with sources defined by proxy as non-background regions. This approach exploits the fact that the variability of image background is much lower that for sources: while there is a great deal of diversity between astronomical objects --- every source is different --- the background in astronomical images is much more consistent. This approach avoids the difficulties inherent in approaches based on comparing ``typical" exemplars of source and background\footnote{Note that previous approaches have framed the source detection problem as one of identifying and removing background. For example, the software package SExtractor \cite{bertin1996sextractor} approximates an image's background by a low-order polynomial, as a function of the mean and median pixel intensity. The background is then subtracted from the image and flood-filling performed to find islands of connected pixels. This background subtraction is likely however to remove dim sources along with background \cite{carvalho2009fast}.}.
+
+The following exploratory algorithm was implemented:
+\begin{itemize}
+\item An equal width binning of the overall image was created, that is, equal width bins were created by dividing the pixel intensity range into a set of equally spaced intervals $b_K$ (as described in Section \ref{sec:width}). Given that radio astronomy images are dominated by background pixels, the counts in $b_K$ for the whole image (denoted $M^B$) was used as a \textbf{model for background}.
+\item Using a square window of size $N$ pixels, the image was iterated across by moving the window from the top-left to the bottom-right corner in steps of $y$ pixels. 
+\item For each such window, the distribution of pixel intensities in the bins $b_K$ (denoted $X$) was compared to the overall distribution $M^B$, returning the likelihood of the window's pixel intensities $X$, under the background model $M^B$. 
+\item The image was output with the 10 percent least likely windows under the background model highlighted. 
+\end{itemize}
+
+With the equal width binning of the overall image as the background model, the probability $p_k$ of a pixel's intensity falling within bin $k \in [1..K]$ (where $\sum_{k=1}^K pk = 1$) is the normalised counts in the bins of the histogram of pixel intensities in the overall image.
+
+Given this model $M^B$, the likelihood of pixel intensities for each window (where $x_k$ is the count of pixels in the window that fall into bin $k$; with a total of $N$ pixels in the window) is calculated using the probability mass function of the multinomial distribution. That is,
+\begin{align}
+f(x_1, .., x_K; N, p_1, .., p_K) &= Pr(X_1 = x_1, .., X_k = x_k) \notag\\
+&= \frac{N!}{x_1!..x_K!} p_1^{x_1}..p_K^{x_K}
+\label{eq:multinomial}
+\intertext{where}
+\sum_{i=1}^K x_i = n \notag
+\end{align}
+
+The log likelihood was calculated to avoid working with extremely small numbers:
+\begin{align}
+\log Pr\left(X_1=x_1,..,X_K=x_k\right) &= \log(N!)-\log\left(\prod_{k=1}^K x_k!\right) + \log \prod_{k=1}^K p_k^{x_k}\notag\\
+&= \sum_{n=1}^N \log\left(n\right) - \sum_{k=1}^K\sum_{m=1}^{x_k}\log\left(m\right) + \sum_{k=1}^K x_k\log(p_k)
+\label{eq:log-mult}
+\end{align}
+
+where $x_k$ is the count in the $k^{th} \in [1..K]$ bin for a given window, and $p_k$ is the background model probability of a pixel falling into the window (the normalised count in that bin for whole image).
+
+In practice, a look-up table of cumulative sums of logs of integers $[1..N]$ can be constructed; then the first term in Equation \ref{eq:log-mult} is the $N^{th}$ entry in the table; the second term is a sum of entries in the table (one per bin-count). Because the window-size does not vary as it moves across the image, the first term in Equation \ref{eq:log-mult} is a constant and so can be dropped from the calculation.
+
+The third term in Equation \ref{eq:log-mult} is the dot product of two vectors: the counts in each bin $x_k$ for the
+window and the log probabilities for each bin $p_k$ (the normalised counts in each bin for the overall image).
+
+It is important to note that one of the assumptions of the multinomial distribution is violated; the counts in each bin are not independent because the intensity of a particular pixel is not independent of its neighbours \cite{kotz2004continuous,wasserman2004all}. Pixels are not randomly distributed across an image, but are found together as ``sources" and ``background" in an image.
+
+\begin{figure}
+\centering
+\includegraphics[width=1.0\textwidth]{IMAGES/ECD.png}
+\caption[Sources found by the exploratory multinomial model]{\textbf{Sources found by the exploratory multinomial model.} A small section of a radio astronomy image (from the Extended Chandra Deep Field South \cite{miller2013very}, contrast-adjusted to show sources) showing the $10$ per cent least likely windows under the multinomial model with the equal width histogram binning of the overall image as the background model $M^B$. The window size is $50$ and the step size is $50$ (that is, there is no overlap between windows). The windows unlikely to be background under the model $M^B$ are shown by red bounding boxes. The transparency of the each window's borders is scaled according to how unlikely the window is: more unlikely windows are given less transparent borders and vice-versa.}
+\label{fig:ECD-mult}
+\end{figure}
+
+Figure \ref{fig:ECD-mult} shows some sample output for this method, illustrating that the simple multinomial model explored in this chapter correctly identifies regions containing sources as unlikely to be background regions. This indicates that:
+\begin{enumerate}
+\item discretisation via histogram binning preserves enough information to locate sources in astronomical images (at least in this example);
+\item a multinomial distribution is a reasonable model for the distribution of pixels in an image; and
+\item using an entire astronomical image --- including both source and background pixels --- as a model for background does not prevent regions in which sources are located from being correctly found.
+\end{enumerate}
+
+For these reasons, the exploratory approach was extended, as described in the next section.
+
+\section{Extending the exploratory approach}
+The ideas developed in this chapter --- discretisation via histogram binning and the exploratory approach to source detection using a multinomial model of background --- are extended in the remainder of this thesis. 
+
+In Chapter \ref{C:LDA}, multinomial models for background and source are inferred via Gibbs sampling on a conditional distribution of a compound Dirichlet-multinomial generative model described by latent Dirichlet allocation \cite{blei2003latent}. These models are used to segment images into background and source regions.
+
+In the exploratory multinomial approach in this chapter, the observation that images are primarily made up of background pixels motivated the use of the histogram binning of a whole image as a proxy for background. In this framework, the task is primarily that of identifying and removing background; sources are defined as ``non-background" (or regions that are unlikely to be background). 
+
+In Chapters \ref{C:1D} and \ref{C:2D}, whole images are again used as a model of background. A score of how likely a region is to be background is derived, and peaks in this score are found using gradient ascent. In contrast to the exploratory approach in this chapter however, the binned image is used as psudocounts in an $\boldsymbol{\alpha}$-vector of the Dirichlet hyperparameter of the marginal joint of a compound Dirichlet-multinomial distribution, rather than directly as a multinomial distribution. 
+
+Both latent Dirichlet allocation (Chapter \ref{C:LDA}) and the Dirichlet-multinomial Score (Chapters \ref{C:1D} and \ref{C:2D}) are performed on discretised images. Histogram binning methods, both ``hard" and ``softened" as described in this chapter, are used for this discretisation.
