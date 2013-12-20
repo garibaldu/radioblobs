@@ -1,0 +1,3 @@
+pdflatex maxent-talk.tex
+pdflatex maxent-talk.tex
+rm maxent-talk.snm maxent-talk.out maxent-talk.aux maxent-talk.nav maxent-talk.log maxent-talk.toc
