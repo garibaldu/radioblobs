@@ -1,0 +1,236 @@
+\documentclass[12pt]{article}
+\input{LocalStyle.sty}  
+% I keep MarcusStyle.sty in $HOME/texmf/tex/latex, because 
+% kpsewhich -var-value=TEXMFHOME says $HOME/texmf is where latex looks.
+
+%\setlength{\parskip}{2mm plus 1mm minus 1mm}
+\renewcommand{\arraystretch}{1.5}
+\renewcommand*{\familydefault}{\sfdefault}
+
+\title{question about likelihood of an image made by generating two regions separately and putting them together}
+\author{marcus}
+\date{}
+\begin{document}
+\maketitle
+
+\section{setup}
+Consider a vector whose elements are categorical variables $x \in \mathcal{X} $ where $\mathcal{X} = \{X_1,\ldots,X_K \}$
+\begin{align*}
+\bx &= (x_1,x_2, \ldots, x_N)
+\intertext{We will use $\mathbb{X}$ to denote the same as a set (ie. without the ordering imposed by the vector):}
+\mathbb{X} &= x_1,x_2, \ldots, x_N
+\intertext{Denote the number of times  each category occurs (its "count") by}
+\bn &= n_1,\ldots,n_K  
+\intertext{and the total count}
+N &= \sum_k^K n_k
+\end{align*}
+
+
+
+\subsection{split}
+Now consider splitting the ``image'' $\bx$ into two parts, e.g. are some pixel mid-way along its length:
+\begin{align*}
+\bx =& (\by , \bz)
+\intertext{To connect this to radioblobs, think of $\by$ as the values inside a putative blob region and $\bz$ as the rest (the "background"). 
+At any rate, I initially thought one could just write
+}
+P(\bx) =& P(\by , \bz)\\
+=& P(\by) \; P(\bz)
+\end{align*}
+
+But it seems that can't be right: imagine the ``image'' is binary
+($\mathcal{X}=\{0,1\}$), our split point is just the halfway
+mark. Suppose the left hand ($\by$) has rather more zeros by chance,
+and the right ($\bz$) has more ones.
+
+The worse this skew is, the more $P(\by, \bz)$ goes down since both
+halves are getting less likely, but $P(\bx)$ stays the same, so they
+can't be equal!
+
+This seems to true for any distribution - it's not some kind of
+Dirichlet weirdness.
+
+{\color{red}{\bf This is just {\em stupid}:  what is my idiotic error?!}}
+
+
+The vector \[\mathtt{000000011111111111111}\] has exactly the same
+probability using a fair coin as \[\mathtt{10110111101111011100}\]
+but what about the probability of 
+tossing \[\mathtt{0000000} \;\textit{ followed by  } \;\mathtt{11111111111111}\]
+
+My gut says $P(\bx) \neq P(\by , \bz)$ because the second is the
+probability not just of the values but the values {\it split into those two
+groups}. But that's just fluffy still.
+
+Feel I'm mixing up SETS, VECTORS, and COUNTS, somehow.............
+
+\section{Fun with Dirichlet}
+Dirichlet Compound Multinomial (DCM) distribution has parameters
+$\balpha = \alpha_1,..,\alpha_K$ with $\alpha_k > 0$ and we denote $ A
+= \sum_k^K \alpha_k$.
+
+Under the DCM distribution, we have that
+\begin{align}
+P(\mathbb{X} |\balpha) &= \frac{\Gamma(A)}{\Gamma(N+A)} \prod_k \frac{\Gamma(n_k+\alpha_k)}{\Gamma(\alpha_k)}  \label{eq:DCMvalues}
+\end{align}
+
+The gamma function just generalises the factorial to the reals: at
+positive integer values they match except that the argument for gamma is
+larger by one: $\Gamma(z) = (z-1)!$.
+
+The probability of {\it counts} is almost the same, but with a multiplier:
+\begin{align}
+P(\bn |\alpha) &= \frac{N!}{\prod_k (n_k!)} \;
+ \frac{\Gamma(A)}{\Gamma(N+A)} \;\prod_k \frac{\Gamma(n_k+\alpha_k)}{\Gamma(\alpha_k)}  \label{eq:DCMcounts}
+\end{align}
+I think I'm right in saying that the multiplier is the ``multinomial coefficient''
+\[
+\frac{N!}{\prod_k (n_k!)} \;
+\;\;\; = \;\;\; 
+{n \choose n_1, n_2,\ldots,n_K}
+\]
+which is a generalisation of the more familiar binomial coefficient "${n \choose k}$".
+
+\subsection{a more succinct notation?}
+
+The multinomial coefficient can be rewritten in terms of gamma functions:
+\[
+\frac{N!}{\prod_k (n_k!)} \;
+\;\;\; = \;\;\; 
+\frac{\Gamma(N+1)}{\prod_k \Gamma(n_k+1)}
+\]
+which has the same form as the other terms now.
+
+Perhaps we can simplify things then. Let's define a function
+\[
+ \Omega(\bc) \;\;= \;\;\frac{\Gamma(C)}{\prod_k \Gamma(c_k)} \;\;=\;\; \frac{(C-1)!}{\prod_k (c_k-1)! }
+\]
+where $C=\sum_k c_k$.
+Note the effect of incrementing one of the counts, say the one indexed $k^\star$:
+\begin{align*}
+\Omega(\bc) &\longrightarrow \Omega(\bc) \times \frac{C}{c_{k^\star}}
+\intertext{whereas {\em de}crementing would change it to}
+&\longrightarrow  \Omega(\bc) \times \frac{c_{k^\star}-1}{C-1}
+\end{align*}
+
+
+I can now write the DCM probability in equation \ref{eq:DCMcounts} using $\Omega$. Terms that come from the multinomial coefficient are shown in {\color{blue}blue}.
+\begin{align}
+P(\bn |\balpha) &= 
+\frac{{\color{blue}\Omega(\bn+1)} \;\; \Omega(\balpha)}{ \Omega(\bn + \balpha)}
+\label{eq:DCMcounts_inOmega}
+\end{align}
+
+Incrementing the $k^{\star}$-th count changes this to:
+\begin{align}
+P(\bn \mid \balpha) &\longrightarrow  
+P(\bn \mid \balpha)\;\; \times \;\;{\color{blue}\bigg( \frac{N+1}{n_{k^\star}+1} 
+\bigg)}
+\;\,\bigg(\frac{n_{k^\star}+\alpha_{k^\star}}{N+A}
+\bigg)\label{eq:increment}
+\intertext{whereas {\em de}crementing would change it to}
+&\longrightarrow  
+P(\bn \mid \balpha)\;\; \times \;\;{\color{blue}\bigg( \frac{n_{k^\star}}{N} 
+\bigg)}
+\;\,\bigg(\frac{N+A-1}{n_{k^\star}+\alpha_{k^\star}-1} 
+\bigg)\label{eq:decrement}
+\end{align}
+
+
+\subsection{moving the boundary}
+Consider the ``split'' image again, with the left-hand side denoted
+$\by$ and the right by $\bz$.
+
+The effect of ``moving the boundary'' to the right by one pixel is to
+take a single value that was in $\bz$ and move it into $\by$
+instead. For generality, I'm going to distinguish between the
+$\balpha$ used in generating $\by$ and the one used for $\bz$ too.
+
+Using equations \ref{eq:increment} and \ref{eq:decrement}, the log likelihood of $\by$ changes by
+\begin{align*}
+\log P(\bn_\Delta^y \mid \balpha^y) -\log P(\bn^y \mid \balpha^y) 
+&=
+{\color{blue}\log(N^y+1) - \log(n^y_{k^\star}+1)}
++ \log(n^y_{k^\star}+\alpha^y_{k^\star}) - \log(N^y+A^y)
+\intertext{whereas that of $\bz$ changes by}
+\log P(\bn_\Delta^z \mid \balpha^z) - \log P(\bn^z \mid \balpha^z) 
+&=
+{\color{blue}\log(n^z_{k^\star}) - \log(N^z)} + \log(N^z+A^z-1) - \log(n^z_{k^\star}+\alpha^z_{k^\star}-1)
+\end{align*}
+
+SO IF (big if...) $P(\by,\bz \mid \text{model}) = P(\by \mid
+\balpha^y) \, P(\bz \mid \balpha^z) $, this means the overall log
+likelihood changes by
+\begin{align*}
+\Delta \log P &= \log P(\bn_\Delta^y,\bn_\Delta^z) - \log P(\bn^y,\bn^z) \\
+&= {\color{blue}  
+  \log \bigg(\; 
+  \frac{N^y+1}{n^y_{k^\star}+1} \;\;
+  \frac{n^z_{k^\star}}{N^z} \bigg)
+  } 
+\; + \; 
+{\color{green}  
+\log \bigg(\frac{n^y_{k^\star}+\alpha^y_{k^\star}}{N^y+A^y} \bigg) 
+}
+\; + \;
+\log \bigg(\frac{N^z+A^z-1}{n^z_{k^\star}+\alpha^z_{k^\star}-1}
+\bigg)
+\end{align*}
+
+
+
+\subsection{Bayes factor}
+Alternatively...
+
+Here's the Bayes factor comparing the likelihood of $\by$ under the two possible $\balpha$ priors:
+\begin{align*}
+\frac{P(\bn^y \mid \balpha^y)}{P(\bn^y \mid \balpha^z)} \;\;
+ &= \;\;
+\frac{{\color{blue}\Omega(\bn^y+1)} \;\; \Omega(\balpha^y)}{ \Omega(\bn^y + \balpha^y)} \;\;\;
+\frac{ \Omega(\bn^y + \balpha^z)}{{\color{blue}\Omega(\bn^y+1)} \;\; \Omega(\balpha^z)} 
+\intertext{Note that the effect of the multinomial coefficient {\it cancels out}, leaving}
+&= \;\;\frac{\Omega(\balpha^y)}{\Omega(\balpha^z)} 
+\;\;\;
+\frac{ \Omega(\bn^y + \balpha^z)}{ \Omega(\bn^y + \balpha^y)} 
+\end{align*}
+
+We (if this is correct) have been calculating the log of this quantity.
+
+
+So let's consider the effect of moving the boundary on the Bayes factor:
+\begin{align*}
+\frac{P(\bn_\Delta^y \mid \balpha^y)}{P(\bn_\Delta^y \mid \balpha^z)}
+\;\; &= \;\; \frac{\Omega(\balpha^y)}{\Omega(\balpha^z)} 
+\;\;\;
+\frac{ 
+ \Omega(\bn^y + \balpha^z) \;\times\; \frac{N^y+A^z}{n^y_{k^\star}+\alpha^z_{k^\star}}
+}{
+ \Omega(\bn^y + \balpha^y) \;\times\; \frac{N^y+A^y}{n^y_{k^\star}+\alpha^y_{k^\star}}
+} 
+\intertext{where $\bn_\Delta$ denotes the {\it new} counts. So...}
+\text{new BF} \;\;&= \;\;\text{old BF} \; \times \; 
+\bigg(
+ \frac{N^y+A^z}{n^y_{k^\star}+\alpha^z_{k^\star}}
+\bigg)
+\; \bigg(\frac{n^y_{k^\star}+\alpha^y_{k^\star}}{N^y+A^y}
+\bigg)
+\intertext{so in log space, here's how the Bayes Factor changes when a single pixel of class $X_{k^\star}$ gets moved from $\bz$ into $\by$:}
+\Delta \text{BF} \;\;&= \;\; 
+\log\bigg( \frac{N^y+A^z}{n^y_{k^\star}+\alpha^z_{k^\star}}
+\bigg) 
+\; + \; 
+{\color{green}  
+\log\bigg(\frac{n^y_{k^\star}+\alpha^y_{k^\star}}{N^y+A^y}
+ \bigg)
+}
+\end{align*}
+
+{\color{red} RED THOUGHT: how about we define a source region as simply some set of
+connected pixels, and individually ask all the pixels at the
+borderline (both out and in) whether they want to join / leave?
+
+What would happen?...}
+
+
+
+\end{document}
