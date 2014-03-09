@@ -1,0 +1,100 @@
+% This is Marcus's style file, for little research notes and so on.  I
+% keep this in $HOME/texmf/tex/latex, because kpsewhich
+% -var-value=TEXMFHOME tells me that ($HOME/texmf) is where latex
+% looks, at least under Ubuntu 12.10
+
+\renewcommand{\familydefault}{\sfdefault} % use sans serif fonts
+\usepackage{graphicx}
+\usepackage[usenames,dvipsnames]{color}% so you can {\color{red} anything}, etc
+\usepackage[fleqn]{amsmath}
+\usepackage{amsmath}
+\usepackage{amssymb,amsfonts}
+\setlength{\textwidth}{16cm}
+\setlength{\textheight}{24cm}
+\hoffset=-2cm
+\voffset=-2cm
+\raggedbottom
+\setlength{\parindent}{0in}
+\setlength{\parskip}{0.14in plus 0.07in minus 0.07in}
+
+\setcounter{tocdepth}{2} % determines the depth to which tableofcontents goes
+
+%--------------------------------
+\newcommand{\Line}[0]{\rule{0cm}{0cm}\\\hrule\rule{0cm}{0cm}}
+\newcommand{\independent}{\protect\mathpalette{\protect\independenT}{\perp}}
+\def\independenT#1#2{\mathrel{\rlap{$#1#2$}\mkern2mu{#1#2}}}
+\newcommand{\dependent}{\not\independent}
+\newcommand{\data}{\mathcal{D}}
+\newcommand{\scriptL}{\mathcal{L}}
+\newcommand{\mat}[1]{\ensuremath{\mathbf{#1}}} % vectors/matrices, x,A,B etc.
+\newcommand{\gmat}[1]{\mbox{\boldmath${#1}$}}  % vectors/matrices Greek symbols
+\newcommand{\swrt}[2]{\frac{\partial #1}{\partial #2}} % partial derivative of single symbol
+\newcommand{\bwrt}[1]{\frac{\partial}{\partial #1}} % partial derivative of something big
+\newcommand{\bA}{\mat{A}}
+\newcommand{\bh}{\mat{h}}
+\newcommand{\bw}{\mat{w}}
+\newcommand{\bv}{\mat{v}}
+\newcommand{\bx}{\mat{x}}
+\newcommand{\by}{\mat{y}}
+\newcommand{\bz}{\mat{z}}
+\newcommand{\bp}{\mat{p}}
+\newcommand{\br}{\mat{r}}
+\newcommand{\bs}{\mat{s}}
+\newcommand{\bt}{\mat{t}}
+\newcommand{\bu}{\mat{u}}
+\newcommand{\bm}{\mat{m}}
+\newcommand{\bn}{\mat{n}}
+\newcommand{\bc}{\mat{c}}
+\newcommand{\bC}{\mat{C}}
+\newcommand{\bH}{\mat{H}}
+\newcommand{\bM}{\mat{M}}
+\newcommand{\bT}{\mat{T}}
+\newcommand{\bW}{\mat{W}}
+\newcommand{\bX}{\mat{X}}
+\newcommand{\bY}{\mat{Y}}
+\newcommand{\bZ}{\mat{Z}}
+\newcommand{\balpha}{\boldsymbol\alpha}
+\newcommand{\bSigma}{\boldsymbol\Sigma}
+\newcommand{\btheta}{\boldsymbol\theta}
+\newcommand{\wo}{\mat{\backslash}}
+\newcommand{\bCinv}{\mat{C}^{-1}}
+\newcommand{\bCinvPrime}{\mat{C^\prime}^{-1}}
+\newcommand{\bkNN}{\mat{k}}
+\newcommand{\T}{\ensuremath{\textit{T}}}
+\newcommand{\Dir}{\ensuremath{\text{Dir}}}
+
+\newcommand{\Bel}[0]{\text{Bel}}
+\newcommand{\on}[0]{\text{on}}
+\newcommand{\off}[0]{\text{off}}
+\newcommand{\ith}[0]{\text{$i^\text{th}\;$}}
+\newcommand{\jth}[0]{\text{$j^\text{th}\;$}}
+\newcommand{\kth}[0]{\text{$k^\text{th}\;$}}
+\newcommand{\wth}[0]{\text{$w^\text{th}\;$}}
+\newcommand{\dth}[0]{\text{$d^\text{th}\;$}}
+\newcommand{\nth}[0]{\text{$n^\text{th}\;$}}
+\newcommand{\tth}[0]{\text{$t^\text{th}\;$}}
+
+\newcommand{\half}[0]{\text{\tiny$\frac{1}{2}$}}
+\newcommand{\onethird}[0]{\text{\tiny$\frac{1}{3}$}}
+\newcommand{\twothirds}[0]{\text{\tiny$\frac{2}{3}$}}
+
+\newcommand{\real}{\mathbb{R}}
+\newcommand{\reals}{\mathbb{R}}
+\newcommand{\Expectation}{\mathbb{E}}
+\newcommand{\expectation}{\mathbb{E}}
+\newcommand{\obs}{\mathrm{obs}}
+\newcommand{\tinyhalf}{\mbox{\tiny $\frac{1}{2}$}}
+
+\newcommand{\tick}{\ding{51}}
+\newcommand{\btick}{\ding{52}}
+\newcommand{\cross}{\ding{55}}
+\newcommand{\bcross}{\ding{56}}
+\newcommand{\given}{\,|\,}
+
+\renewcommand{\vec}[1]{\mathbf{#1}}
+%\newcommand{\balpha}{\mbox{\boldmath $\alpha$}}
+%\newcommand{\btheta}{\mbox{\boldmath $\theta$}}
+%\newcommand{\bphi}{\mbox{\boldmath $\phi$}}
+%\newcommand{\bn}{\mbox{\boldmath $n$}}
+\newcommand{\DCM}{\mbox{DCM}}
+

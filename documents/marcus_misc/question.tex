@@ -7,60 +7,205 @@
 \renewcommand{\arraystretch}{1.5}
 \renewcommand*{\familydefault}{\sfdefault}
 
-\title{question about likelihood of an image made by generating two regions separately and putting them together}
+\title{relating Bayes Factor to a ``full'' generative model for images}
 \author{marcus}
 \date{}
 \begin{document}
 \maketitle
 
-\section{setup}
-Consider a vector whose elements are categorical variables $x \in \mathcal{X} $ where $\mathcal{X} = \{X_1,\ldots,X_K \}$
+
+\section{a generative model of astro images}
+
+\subsection{basics of DCM distribution}
+(following Wikipedia...) ``DCM'' stands for the Dirichlet compound
+multinomial distribution over an $I$-dimensional vector of counts
+$\bn$:
+
+\begin{align}
+\DCM(\bn|\balpha) &= \frac{\Gamma(A)}{\Gamma(N+A)} \prod_i^I \frac{\Gamma(n_i+\alpha_i)}{\Gamma(\alpha_i)}  
+%\intertext{where}
+\;\;\;\;\;\;\;\;\; \text{with} \;A = \sum_i^I \alpha_i, \;\;\; N = \sum_i^I n_i
+\notag \intertext{Taking logs,}
+\log \DCM(\bn|\balpha) &= \log \Gamma(A) - \log \Gamma(N+A) + \sum_i \log \Gamma(n_i+\alpha_i) - \log \Gamma(\alpha_i) \label{eq:logmultdir}
+\end{align}
+
+In our case, the counts $\bn$ are determined by the choice of region,
+parameterised by $\theta$, and so $\bn = \bn(\theta)$. For a single
+elliptical source, $\theta = (x,y,w_x,w_y,\phi)$ (ie. position,
+widths, and rotation).
+
+Denoting the derivative of the log gamma function
+$\frac{\partial}{\partial n}\log \Gamma(n)$ by $\psi(n)$, the gradient
+of $\log \DCM$ w.r.t. $\theta$ is
+\begin{align}
+\frac{\partial}{\partial \theta} \log \DCM(\bn(\theta) |\balpha) 
+&= \sum_i W_i \, \frac{\partial n_i(\theta)}{\partial \theta} 
+%\sum_i \bigg[  \psi(n_i+\alpha_i) - \psi(N+A) \bigg] \frac{\partial n_i}{\partial \theta}
+\label{eq:gradientLogDCM}
+\intertext{where $W_i = \psi(n_i+\alpha_i) - \psi(N+A)$.}
+\end{align}
+
+
+\subsection{our use of Bayes factor in source finding} 
+FreanFriedlanderJohnsonHollitt2013 ({\sc FreFri}) used the two-class model in
+which $\balpha^0$ has large numbers in it and corresponds to the
+background, and $\balpha^1 = (1,1,\ldots,1)$ representing our
+ignorance regarding the source distribution. We used the ratio of the
+associated posterior probs (a.k.a. the ``Bayes factor'') for the pixel
+values in a region as a ``score'' for the sourciness of that
+region. The source parameters $\btheta$ could be thought of as
+parameters specifying the border between source and background if you
+like. We just have a strong prior we're building in that this border
+tends to be elliptical.  Our procedure is: move region parameters
+$\btheta$ to increase Bayes Factor\footnote{Actually the ratio of
+  \emph{posterior} probabilities rather than just the likelihoods,
+  which leads to an additional additive constant.} $\log
+\frac{\DCM(\vec{n}^1 \given \balpha^1)}{\DCM(\vec{n}^1 \given
+  \balpha^0)}$.  Thus optimizing the score in the space of region
+parameters amounts to source finding.
+
+
+\subsection{generative model}
+Is our current scheme, in which we search for regions that have high
+Bayes Factor values, equivalent or close to optimizing a parameterised
+generative model of the \emph{image as a whole}? We haven't thought about it
+in this way before, but writing down such a model would help us to
+generalise the scheme to more than two classes.
+
+A procedure for generating an image containing a \emph{single source}
+`is as follows, assuming we're binning the pixel intensities into $I$ bins:
+\begin{enumerate}
+\item make up parameters $\btheta$ describing a region of the image.
+\item note that $\btheta$ determines the numbers of pixels inside ($N^1$)  and  outside ($N^0$) the region.
+\item set up $\balpha^1 \in \mathbb{R}^I$, with small numbers,
+  and $\balpha^0 \in \mathbb{R}^I$, with big numbers, especially at the bins corresponding to low amplitudes.
+\item the bin counts are DCM distributed, but subject to constraints on $\sum_i n_i$ determined by the choice of $\btheta$.
+  \begin{itemize}
+    \item    $\vec{n}^1 \sim \DCM(\vec{n} \given \balpha^1)$
+    \item $\vec{n}^0 \sim \DCM(\vec{n} \given \balpha^0)$
+  \end{itemize}
+\end{enumerate}
+
+
+\begin{figure}
+\includegraphics[scale=1.0]{./pics/FreFriPGM}
+\caption{Here's what I think the {\sc FreFri} PGM looks like. $\beta$ is just some prior over $\theta$ (eg. we have an inkling of what typical sizes might be, and limits on how elliptical, whateva). Of the three latent variables, the two grey nodes are integrated out analytically through the magic of the DCM distribution. And we {\it optimize} the orange one to find a specific region. The things I'd like to think about next are (i) how to represent an image with many many many sources, and (ii) how we might consider the $\alpha$ ``constants'' as learnable parameters instead.
+\label{fig:FreFriPGM}
+}
+\end{figure}
+
+So this generative model of an image takes parameters $\theta,
+\balpha^0, \balpha^1$, and results in just one ``data point''
+consisting of the two vectors of counts $\vec{n}^0,\vec{n}^1$, which are sampled independently of one another.  The
+likelihood and its logarithm are therefore
+\begin{align*}
+L =& \DCM(\vec{n}^0 \mid \balpha^0) \; \cdot \; \DCM(\vec{n}^1 \mid \balpha^1) 
+\\ \\
+\log L =& \log \DCM(\vec{n}^0 \mid \balpha^0) \;\; + \;\; \log \DCM(\vec{n}^1 \mid \balpha^1) 
+%\\ \\ =& \log \Gamma(A^0) +\log \Gamma(A^1) - \log \Gamma(N^0+A^0)  - \log \Gamma(N^1+A^1) + \\ & \sum_i \log \Gamma(n^0_i + \alpha_i^0) - \log \Gamma(\alpha_i^0) + \sum_i \log \Gamma(n^1_i + \alpha_i^1) - \log \Gamma(\alpha_i^1) 
+\end{align*}
+
+This doesn't seem much like our Bayes factor though, since it
+\emph{adds} instead of subtracts the two $\log \DCM$ terms! The terms
+are slightly different too.  Here they are, for direct comparison:
+
+\begin{tabular}{|l|l|}
+\hline
+log DMR (Bayes Factor): & 
+\parbox{.7\textwidth}{
+\begin{align*}
+&\log \DCM(\vec{n}^1 \given \balpha^1) \;\;-\;\; \log \DCM(\vec{n}^1 \given \balpha^0)
+\end{align*}
+} \\
+\hline
+Log L: & 
+\parbox{.7\textwidth}{
+\begin{align*}
+& \log \DCM(\vec{n}^1 \mid \balpha^1) \;\; + \;\; \log \DCM(\vec{n}^0 \mid \balpha^0)
+\end{align*}
+} \\
+\hline
+\end{tabular}
+
+Note that with $\log L$ it seems that we're modelling the whole image
+in that $\bn^0$ is involved, but with the Bayes factor we are only
+considering the current region. But in fact this is not so, and {\it
+  the two are equivalent} up to an additive constant (so far as
+$\btheta$ is concerned).
+
+Consider the log likelihood of the entire image under just the
+``background'' model (or alternatively, consider the log likelihood in the case that we were to set $\balpha^1$ equal to $\balpha^0$):
+\begin{align*}
+\log \DCM(\bn \mid \balpha^0) 
+&= \log \DCM(\bn^0(\theta) + \bn^1(\theta) \mid \balpha^0)  \\
+&= \log \DCM(\bn^0(\theta) \mid \balpha^0) \; + \; \log \DCM(\bn^1(\theta) \mid \balpha^0) 
+\end{align*}
+This \emph{has to} be unaffected by our choice of region $\btheta$,
+ie. its derivative w.r.t. $\theta$ must be zero everywhere.  Adding
+this constant to the original log likelihood immediately yeilds the
+``Bayes factor'' score we've been using!
+
+Put another way, the gradient w.r.t. any dimension of $\theta$ for the
+log likelihood under the above generative model is the same as the
+gradient of the ratio we used.  For the record, the gradient of our
+Bayes factor (and thus the gradient of the log likelihood too) is...
+\begin{align}
+\frac{\partial}{\partial\theta}\text{DMR}(\theta) 
+&= \sum_i \big[ \psi(n_i + \alpha^S_i) - \psi(n_i + \alpha^B_i) \big] \frac{\partial n^1_i}{\partial\theta} \notag\\
+& - \;\; \big[\psi(N^1+A^1) - \psi(N^1+A^0)]\sum_i \frac{\partial n^1_i}{\partial\theta}
+\end{align}
+
+
+Describing things in terms of (the likelihood of) a generative model
+for the image as a whole is going to be more useful in some contexts,
+and especially for thinking about how to get beyond one source, and
+two classes.
+
+\section{But that's actually not correct!!!}
+
+Consider a vector whose elements are categorical variables $y \in \mathcal{Y} $ where $\mathcal{Y} = \{Y_1,\ldots,Y_K \}$
 \[
-\bx = (x_1,x_2, \ldots, x_N) \]
-We will use $\mathbb{X}$ to denote the same as a set (ie. without the ordering imposed by the vector). The number of times each category occurs (its "count") forms a vector
+\by = (y_1,y_2, \ldots, y_N) \]
+We will use $\mathbb{Y}$ to denote the same as a set (ie. without the ordering imposed by the vector). The number of times each category occurs (its "count") forms a vector
 \[
 \bn = n_1,\ldots,n_K  
 \] 
 and we'll denote the {\it total} count $\sum_{k=1}^K n_k$ by $N$.
 
-
-
-\subsection{split}
-Now consider splitting the ``image'' $\bx$ into two parts, e.g. are some pixel mid-way along its length:
+Now consider splitting the ``image'' $\by$ into two parts, e.g. are some pixel mid-way along its length:
 \begin{align*}
-\bx =& (\by , \bz)
-\intertext{To connect this to radioblobs, think of $\by$ as the values inside a putative blob region and $\bz$ as the rest (the "background"). 
+\by =& (\by^A, \bz^B)
+\intertext{To connect this to radioblobs, think of $\by^A$ as the values inside a putative blob region and $\by^B$ as the rest (the "background"). 
 At any rate, I initially thought one could just write
 }
-P(\bx) =& P(\by , \bz)\\
-=& P(\by) \; P(\bz)
+P(\by) =& P(\by^A , \by^B)\\
+=& P(\by^A) \; P(\by^B)
 \end{align*}
+and I think I've assumed that in the foregoing.
 
-But it seems that can't be right: imagine the ``image'' is binary
-($\mathcal{X}=\{0,1\}$), our split point is just the halfway
-mark. Suppose the left hand ($\by$) has rather more zeros by chance,
-and the right ($\bz$) has more ones.
-
-The worse this skew is, the more $P(\by, \bz)$ goes down since both
-halves are getting less likely, but $P(\bx)$ stays the same, so they
-can't be equal!
-
-This seems to true for any distribution - it's not some kind of
-Dirichlet weirdness.
-
-{\color{red}{\bf This is just {\em stupid}:  what is my idiotic error?!}}
-
-
-The vector \[\mathtt{000000011111111111111}\] has exactly the same
+Eg: The vector \[\mathtt{000000011111111111111}\] has exactly the same
 probability using a fair coin as \[\mathtt{10110111101111011100}\]
 but what about the probability of 
-tossing \[\mathtt{0000000} \;\textit{ followed by  } \;\mathtt{11111111111111}\]
+tossing \[\mathtt{0000000} \;\textit{ followed by  } \;\mathtt{11111111111111}\]?
 
-My gut says $P(\bx) \neq P(\by , \bz)$ because the second is the
-probability not just of the values but the values {\it split into those two
-groups}. But that's just fluffy still.
+IF $\by$ elements are all drawn from the same Bernoulli distribution
+with parameter $p$ of generating a ``1'', then we have the binomial distribution for the
+counts:
+\begin{align*}
+\Pr(n | N,p) &= {N \choose n} \;\; p^n (1-p)^{N-n}
+\;\;\;\;\;\; \text{where} \;\;{N \choose n} = \frac{N!}{n! (N-n)!} 
+\intertext{The probs for the count of "1" within the sub-set $A$ is}
+\Pr(n^A | N^A,p) &= \frac{N^A!}{n^A! (N^A-n^A)!} p^{n^A} (1-p)^{N^A-n^A}
+\intertext{and similarly for the $B$ sub-set, and these are independent so we have}
+\Pr(n^A, n^B| N^A,N^B,p) &= \frac{N^A!}{n^A! (N^A-n^A)!} \;\; \frac{N^B!}{n^B! (N^B-n^B)!} \;\; p^{n^A} (1-p)^{N^A-n^A} \;\;p^{n^B} (1-p)^{N^B-n^B} \\
+&= \frac{N^A! \, N^B!}{n^A! n^B! \, (N^A-n^A)! (N^B-n^B)!}  \;\; p^{n} (1-p)^{N-n} \\
+&= {N^A \choose n^A} \;\; {N^B \choose n^B} \;\; 
+ \;\; p^{n} (1-p)^{N-n}
+\end{align*}
+So the terms involving $p$ match those of $\Pr(n | N,p)$, but not the
+``n choose k'' factor at the front that captures the number of
+equivalent permutations.
 
-Feel I'm mixing up SETS, VECTORS, and COUNTS, somehow.............
 
 \section{Fun with Dirichlet}
 Dirichlet Compound Multinomial (DCM) distribution has parameters
