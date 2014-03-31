@@ -7,13 +7,175 @@
 \renewcommand{\arraystretch}{1.5}
 \renewcommand*{\familydefault}{\sfdefault}
 
-\title{relating our Bayes Factor to a generative model}
+\title{generalising and extending our use of DirMult for source finding}
 \author{marcus}
 \date{}
 \begin{document}
 \maketitle
 
-\section{A surprising thing about counts}
+\tableofcontents
+
+\section{The big picture - the way we approach source-finding}
+
+Goal: automatically find all the sources in an astronomical image, in
+a way that's robust and fast.  In most of the the discussion to
+follow, we will assume there is a single source for
+simplicity. Generalising the approach to multiple sources will be
+addressed..... later!
+
+Basic approach: We will consider two models denoted $B$ for {\bf
+  b}ackground and $C$ for sour{\bf c}e.  One can derive a score for
+how well these locations match regions of ``non-background'' pixel
+intensities (and potentially other features), and treat source-finding
+as an exercise in optimizing those parameters.
+
+For $k$ categories (bins) we will have a $k$-elt vector $\bn$ of
+``counts'', for each class.  We will use a superscript to denote the
+class, with $B$ for background and $S$ for source.
+
+Figure \ref{fig:schematic} shows the structure of this generative
+model for images schematically. The image is modelled as consisting of
+a source region within the image, and ``counts'' of features inside
+($\bn_C$) and outside ($\bn_B$) that region. The features being
+counted could be as simple as the raw pixel intensities for example,
+appropriately discretized (binned).
+
+
+\begin{figure}
+\begin{center}
+\includegraphics[scale=1.0]{./pics/FreFriPGM_Schematic} 
+\end{center}
+\caption{Schematic structure of a probabilistic graphical model (PGM)
+  for the counts $n_B$ observed in the ``background'' region of an
+  image and the counts $n_C$ arising from an astronomical source affecting the image.  \label{fig:FreFriPGM_Schematic} }
+\end{figure}
+
+
+Two big questions then: what score? and  what model?
+
+
+\section{what score?}
+
+We will denote the regions specifying the ``source region'' (or
+perhaps more accurately, the boundary between the source and
+background regions) by $\theta$. How should we ``score'' how well a
+given choice for $\theta$ identifies the extent of a source in the
+image?
+
+\subsection{proposal 1: Bayes factor}
+
+One possible score is ratio of the likelihood of the counts inside the putative source region under the two models. The log of this is
+\begin{align}
+S_\text{likRatio} &= \log \bigg[ \frac{\Pr(\bn^S \mid S, \theta)}{\Pr(\bn^S \mid B, \theta)} \bigg]
+\intertext{A criticism of the above is that it takes no account of how the background probabilities of source and background. A 
+a better variant might be to use the ratio of {\it posterior} probabilities instead, often called a "Bayes factor":}
+S_\text{BayesFactor} &= \log \bigg[ \frac{\Pr(S \mid \bn^S, \theta )}{\Pr(B \mid \bn^S, \theta)} \bigg] \nonumber\\
+%&= S_\text{likRatio}  \;\; + \log \bigg[ \frac{\Pr(S )}{\Pr(B)} \bigg] \nonumber\\
+&= \log \big[ \Pr(\bn^S \mid S, \theta) \big] \;\; - \log \big[\Pr(\bn^S \mid B, \theta) \big]  \;\; + \text{Offset}
+\label{eq:BayesFactor}
+\end{align}
+The $ \text{Offset}$ is $\log [\Pr(S ) / \Pr(B)] $ and is a constant
+reflecting how much of a {\it typical} image we expect will be due to
+the effects of actual sources. As it is not a function of the
+particular choice of source region being optimized, it will not play a
+role in that optimization. However it does enable us to give meaning
+to the value of $S_\text{BayesFactor}$: if this is positive, we prefer
+``source'' over ``background'' as an explanation for the counts within
+that region.
+
+\subsection{proposal 2: likelihood}
+
+An alternative score is log likelihood of the whole image under the combined model, under the current choice of region:
+\begin{align*}
+S_\text{likelihood} 
+&= \log \big[ \Pr(\bn^S, \bn^B \mid S, B, \theta) \big]\\
+&= \log \big[ \Pr(\bn^B \mid B, \theta) \;\; \Pr(\bn^S, \mid S, \theta) \big] \\
+&= \log \big[ \Pr(\bn^B \mid B, \theta) \big] \;\; + \;\; \log \big[ \Pr(\bn^S \mid S, \theta)
+\end{align*}
+
+How does this relate to  $S_\text{BayesFactor}$ in equation \ref{eq:BayesFactor} then? This turns out to depend on the choice we make for $\Pr(\bn \mid \text{model})$, as follows.
+
+
+
+\section{what model?}
+\subsection{Categorical distributions} 
+Consider the graphical model shown in Figure
+\ref{fig:FreFriPGM_Categoricals}(a), which models both source and
+background as Categorical distributions, with different parameters.
+
+For $k$ categories (bins) we have two $k$-elt vectors $\bp$ of
+probabilities.
+
+
+Firstly, note that if the entire image counts $\bn = \bn^B + \bn^S$ were to be modelled by a {\it single} categorical distribution $\bp$,  the distribution of $\bn$ given $\bp$ would be multinomial:
+\begin{align*}
+\Pr(\bn \mid \bp) &= {\color{blue}{N \choose \bn}} \;\; \prod_k (p_k)^{n_k}
+& \text{with $\displaystyle N= \sum_k n_k$ and $\sum_k p_k  = 1$}
+\end{align*}
+where $\displaystyle {N \choose \bn} = {N \choose n_1,\ldots,n_K}$ is the "multinomial coefficient", $\displaystyle \frac{N!}{\prod_k (n_k!)}$.
+
+When the counts are {\bf split into the two classes} but still come from the same model $\bp$, the probability is a
+product of the multinomials for each class:
+\begin{align}
+  \Pr(\bn^B, \bn^S\mid N^B,N^S,\bp) &= 
+  \Pr(\bn^B \mid N^B,\bp) \;\;\Pr(\bn^S \mid N^S,\bp) \nonumber \\
+&= 
+{\color{blue} 
+{N^B \choose \bn^B}  \; {N^S \choose \bn^S}} \;\;\; \prod_k (p^B_k)^{n^B_k} \;\; \prod_{k^\prime} (p^S_{k^\prime})^{n^S_{k^\prime}}  
+%\nonumber \\
+\intertext{and note that if $\bp^B = \bp^S$ the products "merge", leaving}
+&= 
+{N^B \choose \bn^B}  \; {N^S \choose \bn^S} \;\;\; \prod_k (p_k)^{n_k} \label{eq:multinomial-split}
+\end{align}
+
+{\color{red} So the border does matter. I'm still not confident that I really understand this.}
+
+\begin{figure}
+  \begin{tabular}[c]{ccc}
+\includegraphics[scale=1.0]{./pics/FreFriPGM_Categoricals} & \hspace{2cm} &
+\includegraphics[scale=1.0]{./pics/FreFriPGM_DirMults} \\
+(a)& & (b)
+  \end{tabular}
+\caption{A probabilistic graphical model (PGM) for the counts observed
+  outside ($n^B$) and inside ($n^S$) a region of the image
+  parameterised by $\theta$. $p$ is just some prior over $\theta$
+  (eg. we have an inkling of what typical sizes might be, and limits
+  on how elliptical, etc).  We {\it optimize} $\theta$ to find a
+  specific region that is most strongly indicative of source ($\bp^S$)
+  as opposed to background ($\bp^B$) statistics.
+  \label{fig:FreFriPGM_Categoricals} 
+}
+\end{figure}
+
+
+{\sc What's wrong with this as a model:}
+\begin{itemize}
+\item say it
+\end{itemize}
+
+
+\subsection{Dirichlet compound multinomial distributions instead} 
+FreanFriedlanderJohnsonHollitt2013 ({\sc FreFri}) used the two-class model in
+which $\balpha^0$ has large numbers in it and corresponds to the
+background, and $\balpha^1 = (1,1,\ldots,1)$ representing our
+ignorance regarding the source distribution. We used the ratio of the
+associated posterior probs (a.k.a. the ``Bayes factor'') for the pixel
+values in a region as a ``score'' for the sourciness of that
+region. The source parameters $\theta$ could be thought of as
+parameters specifying the border between source and background if you
+like. We just have a strong prior we're building in that this border
+tends to be elliptical.  Our procedure is: move region parameters
+$\theta$ to increase Bayes Factor\footnote{Actually the ratio of
+  \emph{posterior} probabilities rather than just the likelihoods,
+  which leads to an additional additive constant.} $\log
+\frac{\DM(\vec{n}^1 \given \balpha^1)}{\DM(\vec{n}^1 \given
+  \balpha^0)}$.  Thus optimizing the score in the space of region
+parameters amounts to source finding.
+
+
+
+
+
 
 Consider a vector whose elements are categorical variables $y \in \mathcal{Y} $ where $\mathcal{Y} = \{Y_1,\ldots,Y_K \}$
 \[
@@ -32,82 +194,12 @@ To connect this to radioblobs, think of $\by^A$ as the values inside a putative 
 
 As a simple example consider a reasonably fair ``coin'' that
 generates \texttt{0} or \texttt{1}. Let's call it's probability of
-generating \texttt{1} its ``bentness'', $\beta_1$).  Consider the vector
+generating \texttt{1} its ``bentness'', $p_1$).  Consider the vector
 of events being generated by repeatedly tossing this coin
 $\mathtt{0000111111110000}$.  This {\it sequence} has exactly the same
 probability of occuring as, say, the sequence
 $\mathtt{1001101110010010}$, because they have the same overall counts
 and the individual elements are generated i.i.d.
-
-The probability of generating
-$\mathtt{0000111111110000}$ is the probability of generating the first
-4 elements $(1-\beta_1)^4$, TIMES the probability of generating the rest
-of the elements $\beta_1^8 (1-\beta_1)^4$. And this is the same as the
-probability of generating the first 8 elements $\beta_1^4(1-\beta_1)^4$,
-TIMES the probability of generating the rest of the elements $\beta_1^4
-(1-\beta_1)^4$. So in general we can write $P(\by) = \beta_1^{n_1} \, (1-\beta_1)^{n_0}$ and  thus
-\begin{align*}
-P(\by) =& P(\by^A , \by^B)
-\;\; = \;\; P(\by^A) \; P(\by^B)
-\end{align*}
-
-{\bf I have been falling into the trap} of thinking I could just as easily write this:
-\begin{align*}
-P(\bn) =& P(\bn^A , \bn^B)
-\;\; =\;\; P(\bn^A) \; P(\bn^B)
-\end{align*} {\bf however it seems this can't be right}: intuitively, in this
-example the prob of choosing (say) the first 8 elts, times the prob of
-then choosing the next 8, is bound to be LOWER, since both the
-sub-sequences now look very plausible under a fair coin.
-
-We're assuming a single coin, so the distribution of counts will
-be Binomial, and the probability of the overall counts in the whole sequence is:
-\begin{align*}
-\Pr(n | N,\beta_1) &= {\color{blue}{N \choose n_1}} \;\; \beta_1^{n_1} (1-\beta_1)^{N-n_1}
-\;\;\;\;\;\; \text{where} \;\;{N \choose n_1} = \frac{N!}{n_1! (N-n_1)!} 
-\end{align*} 
-{\color{blue} I'm showing the leading coefficient in blue, to
-  highlight the point at which we take account of the possible
-  permutations that could give rise to the same counts.}
-
-However the probability of the counts {\bf split into two sections} $A$ and $B$  must be:
-\begin{align*}
-  \Pr(n_1^A, n_1^B \mid N^A,N^B,\beta_1) 
-%  &=   \Pr(n_1^A \mid N^A,N^B,\beta_1) \;\; \Pr(n_1^B\mid n_1^A, N^A,N^B,\beta_1) &\text{via product rule}\\ 
-  &=   \Pr(n_1^A \mid N^A,\beta_1) \;\; \Pr(n_1^B\mid N^B,\beta_1) \;\;\;\;\;\;\;\;\text{since they're independent}\\ 
-  &= {N^A \choose n_1^A}
- \; \beta_1^{n_1^A} (1-\beta_1)^{N^A-n_1^A}  \;\; {N^B \choose n_1^B} \;\beta_1^{n_1^B} (1-\beta_1)^{N^B-n_1^B} \\
-  &= {\color{blue}{N^A \choose n_1^A} \;\; {N^B \choose n_1^B}} \;\; \;\; \beta_1^{n_1}   (1-\beta_1)^{N-n_1}
-\end{align*}
-LOOK: the terms involving $\beta_1$ match those of $\Pr(n_1 \mid N,\beta_1)$, but
-not the blue ``n choose k'' coefficent at the front that captures the number of
-equivalent permutations. Notice the premultipliers depend on the
-regional counts and so will depend on the region-defining parameters:
-we can't just ignore the fact that they're different.
-
-\subsection{Generalising to the multinomial case}
-
-For more than 2 classes we just generalise the above binomial to the
-multinomial.  We'll have a $k$-elt vector $\bbeta$ of probabilities,
-and a $k$-elt vector $\bn$ of counts.  For the ``all together'' counts
-the probability is
-\begin{align*}
-\Pr(\bn \mid N,\bbeta) &= {\color{blue}{N \choose \bn}} \;\; \prod_k \beta_k^{n_k}
-& \text{with $\displaystyle \sum_k \beta_k  = 1$}
-\end{align*}
-Here $\displaystyle {N \choose \bn} = {N \choose n_1,\ldots,n_K}
-$ is the "multinomial coefficient", $\displaystyle \frac{N!}{\prod_k (n_k!)}$.
-
-The probability of the counts {\bf split into the two sections} is :
-\begin{align}
-  \Pr(\bn^A, \bn^B\mid N^A,N^B,\bbeta) &= 
-  \Pr(\bn^A \mid N^A,\bbeta) \;\;\Pr(\bn^B \mid N^B,\bbeta) \nonumber \\
-&= 
-{N^A \choose \bn^A}  \; {N^B \choose \bn^B} \;\;\; \prod_k \beta_k^{n^A_k} \;\; \prod_{k^\prime} \beta_{k^\prime}^{n^B_{k^\prime}} \nonumber \\
-&= 
-{\color{blue} {N^A \choose \bn^A}  \; {N^B \choose \bn^B}} \;\;\; \prod_k \beta_k^{n_k} \label{eq:multinomial-split}
-\end{align}
-{\color{red} So the border does matter. I'm still not confident that I really understand this.}
 
 \section{Working with the Dirichlet compound Multinomial distribution instead of Multinomial}
 A Dirichlet compound Multinomial (DM) distribution has parameters
@@ -188,8 +280,7 @@ like they do in the multinomial case. Why not?!}
 \section{towards a generative model of astro images}
 
 In our case, the counts $\bn$ are determined by the choice of region
-parameterised by $\theta$, and so $\bn = \bn(\theta)$. For a single
-elliptical source, $\theta = (x,y,w_x,w_y,\phi)$ (ie. position,
+parameterised by $\theta$, and so $\bn = \bn(\theta)$. For a single elliptical source, $\theta = (x,y,w_x,w_y,\phi)$ (ie. position,
 widths, and rotation).
 
 Denoting the derivative of the log gamma function
@@ -206,27 +297,6 @@ of $\log \DM$ w.r.t. $\theta$ is
 
 
 
-\subsection{our use of Bayes factor in source finding} 
-FreanFriedlanderJohnsonHollitt2013 ({\sc FreFri}) used the two-class model in
-which $\balpha^0$ has large numbers in it and corresponds to the
-background, and $\balpha^1 = (1,1,\ldots,1)$ representing our
-ignorance regarding the source distribution. We used the ratio of the
-associated posterior probs (a.k.a. the ``Bayes factor'') for the pixel
-values in a region as a ``score'' for the sourciness of that
-region. The source parameters $\btheta$ could be thought of as
-parameters specifying the border between source and background if you
-like. We just have a strong prior we're building in that this border
-tends to be elliptical.  Our procedure is: move region parameters
-$\btheta$ to increase Bayes Factor\footnote{Actually the ratio of
-  \emph{posterior} probabilities rather than just the likelihoods,
-  which leads to an additional additive constant.} $\log
-\frac{\DM(\vec{n}^1 \given \balpha^1)}{\DM(\vec{n}^1 \given
-  \balpha^0)}$.  Thus optimizing the score in the space of region
-parameters amounts to source finding.
-
-
-
-
 
 \subsection{generative model}
 Is our current scheme, in which we search for regions that have high
@@ -238,11 +308,11 @@ generalise the scheme to more than two classes.
 A procedure for generating an image containing a \emph{single source}
 `is as follows, assuming we're binning the pixel intensities into $I$ bins:
 \begin{enumerate}
-\item make up parameters $\btheta$ describing a region of the image.
-\item note that $\btheta$ determines the numbers of pixels inside ($N^1$)  and  outside ($N^0$) the region.
+\item make up parameters $\theta$ describing a region of the image.
+\item note that $\theta$ determines the numbers of pixels inside ($N^1$)  and  outside ($N^0$) the region.
 \item set up $\balpha^1 \in \mathbb{R}^I$, with small numbers,
   and $\balpha^0 \in \mathbb{R}^I$, with big numbers, especially at the bins corresponding to low amplitudes.
-\item the bin counts are DM distributed, but subject to constraints on $\sum_i n_i$ determined by the choice of $\btheta$.
+\item the bin counts are DM distributed, but subject to constraints on $\sum_i n_i$ determined by the choice of $\theta$.
   \begin{itemize}
     \item    $\vec{n}^1 \sim \DM(\vec{n} \given \balpha^1)$
     \item $\vec{n}^0 \sim \DM(\vec{n} \given \balpha^0)$
@@ -251,9 +321,10 @@ A procedure for generating an image containing a \emph{single source}
 
 
 \begin{figure}
-\includegraphics[scale=1.0]{./pics/FreFriPGM}
-\caption{Here's what I think the {\sc FreFri} PGM looks like. $\beta$ is just some prior over $\theta$ (eg. we have an inkling of what typical sizes might be, and limits on how elliptical, whateva). Of the three latent variables, the two grey nodes are integrated out analytically through the magic of the DM distribution. And we {\it optimize} the orange one to find a specific region. The things I'd like to think about next are (i) how to represent an image with many many many sources, and (ii) how we might consider the $\alpha$ ``constants'' as learnable parameters instead.
-\label{fig:FreFriPGM}
+\includegraphics[scale=1.0]{./pics/FreFriPGM_DirMults}
+\caption{Here's what I think the {\sc FreFri} PGM looks like. Of the three latent variables, the two grey nodes are integrated out analytically through the magic of the DM distribution. And we {\it optimize} the orange one to find a specific region. 
+The things I'd like to think about next are (i) how to represent an image with many many many sources, and (ii) how we might consider the $\alpha$ ``constants'' as learnable parameters instead.
+\label{fig:FreFriPGM_DirMults}
 }
 \end{figure}
 
@@ -294,7 +365,7 @@ Note that with $\log L$ it seems that we're modelling the whole image
 in that $\bn^0$ is involved, but with the Bayes factor we are only
 considering the current region. But in fact this is not so, and {\it
   the two are equivalent} up to an additive constant (so far as
-$\btheta$ is concerned).
+$\theta$ is concerned).
 
 Consider the log likelihood of the entire image under just the
 ``background'' model (or alternatively, consider the log likelihood in the case that we were to set $\balpha^1$ equal to $\balpha^0$):
@@ -303,7 +374,7 @@ Consider the log likelihood of the entire image under just the
 &= \log \DM(\bn^0(\theta) + \bn^1(\theta) \mid \balpha^0)  \\
 &= \log \DM(\bn^0(\theta) \mid \balpha^0) \; + \; \log \DM(\bn^1(\theta) \mid \balpha^0) 
 \end{align*}
-This \emph{has to} be unaffected by our choice of region $\btheta$,
+This \emph{has to} be unaffected by our choice of region $\theta$,
 ie. its derivative w.r.t. $\theta$ must be zero everywhere.  Adding
 this constant to the original log likelihood immediately yeilds the
 ``Bayes factor'' score we've been using!

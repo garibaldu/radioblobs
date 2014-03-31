@@ -1,0 +1,4 @@
+cd ./pics
+python FreFriPGM.py
+cd ..
+pdflatex question
