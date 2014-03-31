@@ -90,7 +90,7 @@ An alternative score is log likelihood of the whole image under the combined mod
 S_\text{likelihood} 
 &= \log \big[ \Pr(\bn^S, \bn^B \mid S, B, \theta) \big]\\
 &= \log \big[ \Pr(\bn^B \mid B, \theta) \;\; \Pr(\bn^S, \mid S, \theta) \big] \\
-&= \log \big[ \Pr(\bn^B \mid B, \theta) \big] \;\; + \;\; \log \big[ \Pr(\bn^S \mid S, \theta)
+&= \log \big[ \Pr(\bn^B \mid B, \theta) \big] \;\; + \;\; \log \big[ \Pr(\bn^S \mid S, \theta) \big]
 \end{align*}
 
 How does this relate to  $S_\text{BayesFactor}$ in equation \ref{eq:BayesFactor} then? This turns out to depend on the choice we make for $\Pr(\bn \mid \text{model})$, as follows.
@@ -112,23 +112,29 @@ Firstly, note that if the entire image counts $\bn = \bn^B + \bn^S$ were to be m
 \Pr(\bn \mid \bp) &= {\color{blue}{N \choose \bn}} \;\; \prod_k (p_k)^{n_k}
 & \text{with $\displaystyle N= \sum_k n_k$ and $\sum_k p_k  = 1$}
 \end{align*}
-where $\displaystyle {N \choose \bn} = {N \choose n_1,\ldots,n_K}$ is the "multinomial coefficient", $\displaystyle \frac{N!}{\prod_k (n_k!)}$.
+{\color{blue}where $\displaystyle {N \choose \bn} = {N \choose n_1,\ldots,n_K}$ is the "multinomial coefficient", $\displaystyle \frac{N!}{\prod_k (n_k!)}$.}
 
-When the counts are {\bf split into the two classes} but still come from the same model $\bp$, the probability is a
+When the counts are {\bf split into the two classes} with different Categorical distributions, the probability is a
 product of the multinomials for each class:
 \begin{align}
-  \Pr(\bn^B, \bn^S\mid N^B,N^S,\bp) &= 
-  \Pr(\bn^B \mid N^B,\bp) \;\;\Pr(\bn^S \mid N^S,\bp) \nonumber \\
+  \Pr(\bn^B, \bn^S\mid N^B,N^S,\bp^B,\bp^S) &= 
+  \Pr(\bn^B \mid N^B,\bp^B) \;\;\Pr(\bn^S \mid N^S,\bp^S) \nonumber \\
 &= 
 {\color{blue} 
 {N^B \choose \bn^B}  \; {N^S \choose \bn^S}} \;\;\; \prod_k (p^B_k)^{n^B_k} \;\; \prod_{k^\prime} (p^S_{k^\prime})^{n^S_{k^\prime}}  
 %\nonumber \\
 \intertext{and note that if $\bp^B = \bp^S$ the products "merge", leaving}
 &= 
-{N^B \choose \bn^B}  \; {N^S \choose \bn^S} \;\;\; \prod_k (p_k)^{n_k} \label{eq:multinomial-split}
+{\color{blue}{N^B \choose \bn^B}  \; {N^S \choose \bn^S}} \;\;\; \prod_k (p_k)^{n_k} \label{eq:multinomial-split}
 \end{align}
 
-{\color{red} So the border does matter. I'm still not confident that I really understand this.}
+{\color{red} (....So the border does matter. I'm still not confident that I really understand this.)}
+
+The probability of the {\bf actual (discretized) observations} is the same, but without the {\color{blue}blue} multinomial coefficients:
+\begin{align}
+  \Pr(\bz^B, \bz^S\mid N^B,N^S,\bp^B,\bp^S) &=  \prod_k (p^B_k)^{n^B_k} \;\; \prod_{k^\prime} (p^S_{k^\prime})^{n^S_{k^\prime}}  
+\end{align}
+which obviously factors beautifully and is easy to calculate.
 
 \begin{figure}
   \begin{tabular}[c]{ccc}
@@ -150,8 +156,11 @@ product of the multinomials for each class:
 
 {\sc What's wrong with this as a model:}
 \begin{itemize}
-\item say it
+\item what distribution to use for $\bp^S$?
+\item i really need to say what the nasty effect of assuming [the wrong / a single] $\bp^S$ is going to be. EXPLAIN!!
 \end{itemize}
+
+Open question: should the blue stuff be in, or not? Since $\theta$ affects the counts $\bn$ the blue terms will actually affect things!
 
 
 \subsection{Dirichlet compound multinomial distributions instead} 
