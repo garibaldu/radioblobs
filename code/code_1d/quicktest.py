@@ -2,14 +2,7 @@ import numpy as np
 import numpy.random as rng
 import numpy.ma as ma
 import pylab as pl
-#import matplotlib as mpl
-#import matplotlib.pyplot as plt
-#import matplotlib.mlab as mp 
-#import copy, sys
 import math
-#import optparse
-#import scipy.signal
-#import scipy.special.basic as sp
 
 
 def calc_lgamma_vect(vect):
@@ -43,31 +36,45 @@ def choose(p, arrayShape=(1,)):
     return np.reshape(b,arrayShape)
 
 
+
 def expand_boolean_array_one_pixel(m):
-    #bigm = np.ndarray(shape = m.shape, dtype=bool)
     bigm = m.copy()
-    #bigm[:] = False
+    # First the cells to the Nth, Sth, East and West.
     bigm[1:,:] = bigm[1:,:] + m[:-1,:]
     bigm[:-1,:] = bigm[:-1,:] + m[1:,:]
     bigm[:,1:] = bigm[:,1:] + m[:,:-1]
     bigm[:,:-1] = bigm[:,:-1] + m[:,1:]
+    # now the four "diagonal corners"
+    bigm[1:,1:] = bigm[1:,1:] + m[:-1,:-1]
+    bigm[:-1,:-1] = bigm[:-1,:-1] + m[1:,1:]
+    bigm[1:,:-1] = bigm[1:,:-1] + m[:-1,1:]
+    bigm[:-1,1:] = bigm[:-1,1:] + m[1:,:-1]
     bigm[m==True] = False  # doesn't appear to be changing anything?!
     return bigm
 
+def calc_Bayes_factor(nk):
+        SRC_term = calc_full(nk, model_alpha_SRC, sum_SRC, lg_sum_SRC, sum_lg_SRC)
+        BG_term = calc_full(nk, model_alpha_BG, sum_BG, lg_sum_BG, sum_lg_BG)
+        sc = SRC_term - BG_term 
+        sc -= np.log(1.0) # this is the effect of our prior on P(source)
+        return sc
+
+
 if __name__ == "__main__":
-    K = 25
+    K = 30
+    BINS = -0.5+np.arange(K+1)
     nRows,nCols = 50,60
     # make an image by sampling from a background (BG) distribution
-    BG_alphas = 100* np.power(np.arange(K,0,-1.),2.0) # parameters for Dirichlet
-    categoricalA = rng.dirichlet(BG_alphas) #sample from Dirichlet
+    true_BG_alphas = 100* np.power(np.arange(K,0,-1.),2.0) # parameters for Dirichlet
+    categoricalA = rng.dirichlet(true_BG_alphas) #sample from Dirichlet
     #print categoricalA , choose(categoricalA) #check...
     z = choose(categoricalA,(nRows,nCols))#samples from categorical
-    #print np.histogram(np.ravel(z),bins=-0.5+np.arange(K+1)) #check...
-    #
+    #print np.histogram(np.ravel(z),bins=BINS)
+
     # make a part of that image by sampling from a source (SRC) distribution
-    SRC_alphas = 1.0*np.power(np.arange(K,0,-1.),0.25) # parameters for Dirichlet
-    categoricalB = rng.dirichlet(SRC_alphas) #sample from Dirichlet
-    print categoricalB , choose(categoricalB) #check...
+    true_SRC_alphas = 1.0*np.power(np.arange(K,0,-1.),0.05) # parameters for Dirichlet
+    categoricalB = rng.dirichlet(true_SRC_alphas) #sample from Dirichlet
+    print 'source distribution: ',categoricalB , choose(categoricalB) #check...
     SRC_size = [nRows/5,nCols/5]
     tmpz = choose(categoricalB,SRC_size)#samples from categorical
     SRC_posn = [nRows/5,nCols/4]
@@ -76,71 +83,82 @@ if __name__ == "__main__":
     pl.subplot(221)
     pl.imshow(z, interpolation='nearest',cmap='gray')
     
-    # Now! I think I want a map from some key that identifies a putative source to a set of pixels, which is to say a mask. Don't really need a key: just a List of masks? Think so.
 
 
-    mz = ma.masked_less(z, z.max()) # all z below the max will be masked.
-    pl.subplot(222)
-    pl.imshow(mz, interpolation='nearest',cmap='gray')
-    #list the unmasked locations....
-    locations = np.transpose(np.nonzero(~mz.mask))
-    print 'locations:'
-    print locations
-
-    # expand the mask...
-    neighbours = np.logical_not(expand_boolean_array_one_pixel(np.logical_not(mz.mask)))
-    pl.subplot(223)
-    pl.imshow(neighbours, interpolation='nearest',cmap='gray')
-    
-    
-    pl.savefig('testimg')
-    """
+    # -------------------- now we pretend not to know alphas, or anything! --------------------------
     # bogus, but we're setting the background alphas as if there were
     # no sources in the image at the moment....
-    alpha_BG = np.histogram(y,bins=BINS)[0] + 0.5
-    Cxk = np.zeros((len(BINS)-1,N))
-    for i in range(N):
-        Cxk[:,i]=np.histogram(y[i],bins=BINS)[0] 
-
-
-    alpha_SRC = 0.5 * np.ones(alpha_BG.shape)  # 0.5 if the Jeffries prior
-    alpha_SRC[0] = 0.5
-    for i in range(1,len(alpha_SRC)):
-        alpha_SRC[i] = 1.1*alpha_SRC[i-1]
-    print 'alpha_SRC: ',alpha_SRC
-
-
+    model_alpha_BG = np.histogram(z,bins=BINS)[0] + 0.5
+    model_alpha_SRC = 0.5 * np.ones(model_alpha_BG.shape)  # 0.5 if the Jeffries prior
+    print 'model_alpha_SRC: ',model_alpha_SRC
     #1st two terms for full calculation
-    sum_BG = np.sum(alpha_BG)
+    sum_BG = np.sum(model_alpha_BG)
     lg_sum_BG = math.lgamma(sum_BG)
-    sum_lg_BG = np.sum(calc_lgamma_vect(alpha_BG))
-
-    sum_SRC = np.sum(alpha_SRC)
+    sum_lg_BG = np.sum(calc_lgamma_vect(model_alpha_BG))
+    sum_SRC = np.sum(model_alpha_SRC)
     lg_sum_SRC = math.lgamma(sum_SRC)
-    sum_lg_SRC = np.sum(calc_lgamma_vect(alpha_SRC))
+    sum_lg_SRC = np.sum(calc_lgamma_vect(model_alpha_SRC))
       
-    nk = 1 # some counts???
+    threshold = z.max()-3
+    mz = ma.masked_less(z, threshold) # all z below this value will be masked.
+    locations = np.transpose(np.nonzero(~mz.mask))
+    print 'locations of max:', locations
 
-    #SCORE                
-    SRC_term = calc_full(nk, alpha_SRC, sum_SRC, lg_sum_SRC, sum_lg_SRC)
-    BG_term = calc_full(nk, alpha_BG, sum_BG, lg_sum_BG, sum_lg_BG)
-    sc = SRC_term - BG_term 
-    sc -= np.log(10.0) # this is the effect of our prior on P(source)
-                
-    score[row,col] = sc
+    # pick one location to seed a region
+    regions, BFs = [], []
+    for seed in locations:
+        print seed
+        mz = ma.masked_array(z, mask=np.ones(shape=z.shape)) 
+        mz.mask[seed[0],seed[1]] = False # unmask just this one spot!
+
+        pl.subplot(222)
+        pl.imshow(mz, interpolation='nearest',cmap='gray')
+
+        improvements = True
+        while (improvements == True):
+            # expand the mask...
+            neighbours = np.logical_not(expand_boolean_array_one_pixel(np.logical_not(mz.mask)))
+
+            # We can calculate the current Bayes Factor for the region....
+            # First, assess the counts in the region as it stands.
+            nk = np.histogram(mz.compressed(),bins=BINS)[0]
+            print 'counts: ', nk, nk.sum()
+            BF = calc_Bayes_factor(nk)
+            print 'bayes_factor is ',BF
+
+            # go through the neighbours in a random order...
+            border_sites = np.transpose(np.nonzero(~neighbours))
+            rng.shuffle(border_sites)
+            N = nk.sum()
+            improvements = False
+            for site in border_sites:
+                k = z[site[0],site[1]]
+                BF_increase = math.log((nk[k]+model_alpha_SRC[k])/(N+model_alpha_SRC.sum())) - math.log((nk[k]+model_alpha_BG[k])/(N+model_alpha_BG.sum()))
+                #print 'change to Bayes factor should be ', BF_increase
+                if BF_increase > 0.0:
+                    improvements = True
+                    mz.mask[site[0],site[1]] = False #we unmask this pixel!
+                    # this is same code as above, so that's not very cool.................
+                    nk = np.histogram(mz.compressed(),bins=BINS)[0]
+                    print '\t counts: ', nk, nk.sum()
+                    BF = calc_Bayes_factor(nk)
+                    print '\t bayes_factor is ',BF
+
+        if BF > 0.0:
+            regions.append(mz.mask.copy())
+            BFs.append(BF)
+    
+    all_regions_img = np.zeros(shape=z.shape, dtype=float)
+    for i in range(len(regions)):
+        region_mask = regions[i]
+        BF = BFs[i]
+        all_regions_img = np.maximum(all_regions_img, BF*(region_mask==False))
+
+    pl.subplot(223)
+    pl.imshow(all_regions_img, interpolation='nearest',cmap='hot')
+    #pl.colorbar()
 
 
-
-
-
-
-
-
-
-    # where are the brightest pixels in the image?
-    mask = np.ndarray(shape = z.shape, dtype=bool)
-    mask[:] = False
-    mask[z >= z.max()] = True
-    """
+    pl.savefig('testimg')
 
 
